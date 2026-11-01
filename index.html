@@ -1,0 +1,485 @@
+<title>Molin Shopping List</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600&family=DM+Mono:wght@500&display=swap">
+<style>
+/* Layout: one phone-width column; sticky total bar on top, store chips, item list grouped by store, add sheet slides up from bottom. */
+:root{
+  --bg:#F4F6F0; --surface:#FFFFFF; --ink:#1C2A21; --muted:#5E6E63; --line:#DCE3D8;
+  --green:#2E6A4C; --green-ink:#FFFFFF; --tag:#F3C731; --tag-ink:#2A2306;
+  --danger:#B23A2E; --done:#9AA89E;
+  --s-costco:#C8372D; --s-shoprite:#D9452B; --s-fu:#2F7D4E; --s-sas:#6B3FA0; --s-amazon:#E8922A; --s-other:#5C6B78;
+  --f-display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --f-body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r:12px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111813; --surface:#1A231D; --ink:#E6EDE7; --muted:#9AAA9F; --line:#2C3830;
+  --green:#5DBB8A; --green-ink:#0D1A12; --tag:#E9BF2C; --tag-ink:#231C02; --danger:#F07A6C; --done:#5E6C63;
+  --s-costco:#F06A5F; --s-shoprite:#F27A5E; --s-fu:#5DBB8A; --s-sas:#A98BE0; --s-amazon:#F2AE5A; --s-other:#93A3B0;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111813; --surface:#1A231D; --ink:#E6EDE7; --muted:#9AAA9F; --line:#2C3830;
+  --green:#5DBB8A; --green-ink:#0D1A12; --tag:#E9BF2C; --tag-ink:#231C02; --danger:#F07A6C; --done:#5E6C63;
+  --s-costco:#F06A5F; --s-shoprite:#F27A5E; --s-fu:#5DBB8A; --s-sas:#A98BE0; --s-amazon:#F2AE5A; --s-other:#93A3B0;
+  color-scheme:dark}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--green)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.wrap{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* Header */
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--green);color:var(--green-ink)}
+header .wrap{padding-block:14px 16px;display:grid;gap:10px}
+.toprow{display:flex;justify-content:space-between;align-items:center;gap:12px}
+h1{font:800 22px/1.1 var(--f-display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.who{display:flex;align-items:center;gap:6px;background:color-mix(in srgb,var(--green-ink) 14%,transparent);border:0;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--green-ink)}
+.totals{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.total-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;opacity:.8}
+.total-amt{font:500 30px/1 var(--f-mono);font-variant-numeric:tabular-nums}
+.meta{font-size:13px;opacity:.9;text-align:right}
+
+/* Store chips */
+.chips{display:flex;gap:8px;overflow-x:auto;padding-block:14px 4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:1px;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:7px 12px;min-width:84px;text-align:left}
+.chip b{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.chip span{font:500 12px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--c,var(--s-other));flex:none}
+
+.banner{margin-top:12px;font-size:13px;padding:10px 12px;border-radius:10px;background:var(--surface);border:1px dashed var(--line);color:var(--muted)}
+
+/* List */
+main .wrap{padding-block:8px 120px}
+.group{margin-top:18px}
+.group h2{display:flex;align-items:center;gap:8px;font:600 13px var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px}
+.group h2 .sub{margin-left:auto;font:500 13px var(--f-mono);letter-spacing:0;color:var(--ink);font-variant-numeric:tabular-nums}
+ul{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+li{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;padding:12px;border-top:1px solid var(--line)}
+li:first-child{border-top:0}
+.check{width:26px;height:26px;border-radius:7px;border:2px solid var(--line);background:transparent;display:grid;place-items:center;margin-top:1px}
+.check svg{opacity:0}
+li.done .check{background:var(--green);border-color:var(--green)}
+li.done .check svg{opacity:1}
+.body{min-width:0}
+.name{font-weight:600;font-size:16px;overflow-wrap:anywhere}
+.qty{font:500 13px var(--f-mono);color:var(--muted);margin-right:4px}
+.sub2{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+li.done .name{text-decoration:line-through;color:var(--done)}
+.row-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.pill{border:1px solid var(--line);background:transparent;border-radius:999px;padding:4px 10px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.pill.mine{background:var(--green);border-color:var(--green);color:var(--green-ink)}
+.pill.theirs{border-color:var(--green);color:var(--green)}
+.pill.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,var(--line))}
+/* shelf price tag */
+.tag{font:500 13px var(--f-mono);font-variant-numeric:tabular-nums;background:var(--tag);color:var(--tag-ink);padding:3px 8px 3px 12px;border-radius:3px 6px 6px 3px;position:relative;white-space:nowrap}
+.tag::before{content:"";position:absolute;left:4px;top:50%;width:4px;height:4px;margin-top:-2px;border-radius:50%;background:var(--bg)}
+.tag.none{background:transparent;color:var(--muted);border:1px dashed var(--line);padding-left:8px}
+.tag.none::before{display:none}
+.tag small{display:block;font-size:10.5px;opacity:.75;text-align:right}
+
+.empty{text-align:center;padding:48px 16px;color:var(--muted)}
+.empty strong{display:block;font:600 18px var(--f-display);color:var(--ink);margin-bottom:6px}
+
+.foot-actions{display:flex;justify-content:center;margin-top:20px}
+
+/* FAB */
+.fab{position:fixed;right:max(16px,calc(env(safe-area-inset-right,0px) + 16px));bottom:calc(env(safe-area-inset-bottom,0px) + 18px);z-index:6;border:0;background:var(--ink);color:var(--bg);border-radius:999px;padding:14px 20px;font-weight:600;display:flex;align-items:center;gap:8px;box-shadow:0 6px 20px rgba(0,0,0,.22)}
+
+/* Sheet */
+.scrim{position:fixed;inset:0;background:rgba(10,20,14,.45);z-index:20}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--surface);border-radius:18px 18px 0 0;max-height:92vh;overflow:auto;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 16px)}
+.sheet .wrap{padding-block:18px 4px;display:grid;gap:14px}
+.sheet h3{font:800 20px var(--f-display);margin:0}
+label{display:grid;gap:5px;font-size:13px;font-weight:600;color:var(--muted)}
+input,select{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:11px 12px;font-size:16px;font-weight:400;color:var(--ink)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stores{display:flex;flex-wrap:wrap;gap:8px}
+.stores button{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:7px 12px;font-size:14px;display:flex;align-items:center;gap:6px}
+.stores button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.stepper{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg)}
+.stepper button{border:0;background:transparent;width:44px;font-size:20px}
+.stepper input{border:0;border-radius:0;text-align:center;background:transparent;font-family:var(--f-mono)}
+.price-row{display:flex;gap:8px;align-items:end}
+.price-row label{flex:1}
+.est{border:1px solid var(--green);color:var(--green);background:transparent;border-radius:10px;padding:11px 12px;font-weight:600;white-space:nowrap}
+.est[disabled]{opacity:.5}
+.hint{font-size:12.5px;color:var(--muted);margin:-6px 0 0}
+.sheet-actions{display:flex;gap:10px;justify-content:flex-end}
+.btn{border:0;border-radius:10px;padding:12px 18px;font-weight:600}
+.btn.primary{background:var(--green);color:var(--green-ink)}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 84px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;z-index:30;max-width:calc(100% - 32px)}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .22s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
+@media (max-width:380px){.two{grid-template-columns:1fr}}
+</style>
+
+<header>
+  <div class="wrap">
+    <div class="toprow">
+      <h1>Molin Shopping List</h1>
+      <button class="who" id="whoBtn" type="button" aria-label="Change your name">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+        <span id="whoName">Who are you?</span>
+      </button>
+    </div>
+    <div class="totals">
+      <div>
+        <div class="total-label" id="totalLabel">Estimated total</div>
+        <div class="total-amt" id="totalAmt">$0.00</div>
+      </div>
+      <div class="meta" id="metaLine">0 items</div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="chips" id="chips" role="toolbar" aria-label="Filter by store"></div>
+    <div class="banner" id="banner" hidden></div>
+    <div id="list"></div>
+    <div class="foot-actions"><button class="pill danger" id="clearDone" type="button" hidden>Clear items marked bought</button></div>
+  </div>
+</main>
+
+<button class="fab" id="fab" type="button">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+  Add item
+</button>
+
+<div class="scrim" id="scrim" hidden></div>
+<section class="sheet" id="sheet" hidden aria-modal="true" role="dialog" aria-labelledby="sheetTitle">
+  <form class="wrap" id="form" autocomplete="off">
+    <h3 id="sheetTitle">Add an item</h3>
+    <label>Item<input id="fName" required placeholder="e.g. Paper towels" maxlength="80"></label>
+    <div class="two">
+      <label>Brand<input id="fBrand" placeholder="e.g. Bounty (optional)" maxlength="60"></label>
+      <label>Quantity
+        <div class="stepper">
+          <button type="button" id="qMinus" aria-label="Decrease quantity">−</button>
+          <input id="fQty" type="number" inputmode="numeric" min="1" max="999" value="1" aria-label="Quantity">
+          <button type="button" id="qPlus" aria-label="Increase quantity">+</button>
+        </div>
+      </label>
+    </div>
+    <div>
+      <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px">Store</div>
+      <div class="stores" id="storePick"></div>
+    </div>
+    <div class="price-row">
+      <label>Est. price each ($)<input id="fPrice" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></label>
+      <button type="button" class="est" id="estBtn" hidden>Estimate</button>
+    </div>
+    <p class="hint" id="estHint">Price is optional. It's used for the estimated total.</p>
+    <div class="sheet-actions">
+      <button type="button" class="btn ghost" id="cancelBtn">Cancel</button>
+      <button type="submit" class="btn primary" id="saveBtn">Add to list</button>
+    </div>
+  </form>
+</section>
+
+<section class="sheet" id="nameSheet" hidden aria-modal="true" role="dialog" aria-labelledby="nameTitle">
+  <form class="wrap" id="nameForm">
+    <h3 id="nameTitle">Who's shopping?</h3>
+    <p class="hint" style="margin:0">Your name shows on items you add and items you say you'll pick up.</p>
+    <label>Your name<input id="fWho" required maxlength="30" placeholder="e.g. Dave"></label>
+    <div class="sheet-actions">
+      <button type="button" class="btn ghost" id="nameCancel">Cancel</button>
+      <button type="submit" class="btn primary">Save</button>
+    </div>
+  </form>
+</section>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const STORES = [
+  {id:"costco", name:"Costco", c:"--s-costco"},
+  {id:"shoprite", name:"ShopRite", c:"--s-shoprite"},
+  {id:"fooduniverse", name:"Food Universe", c:"--s-fu"},
+  {id:"stopandshop", name:"Stop & Shop", c:"--s-sas"},
+  {id:"amazon", name:"Amazon", c:"--s-amazon"},
+  {id:"other", name:"Other", c:"--s-other"},
+];
+const storeById = Object.fromEntries(STORES.map(s=>[s.id,s]));
+const $ = id => document.getElementById(id);
+const money = n => "$" + (Math.round(n*100)/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const ls = {
+  get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch{return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
+};
+
+const state = {
+  items: [], mode: "loading", canWrite: true, filter: "all",
+  me: ls.get("msl.me",""), editingId: null, pickStore: "costco",
+  confirmDelete: null, sample: null,
+};
+
+/* ---------- storage: shared db in Claude, local fallback elsewhere ---------- */
+let col = null;
+const LOCAL_KEY = "msl.items";
+
+async function initStore(){
+  let db = null, user = null;
+  if (window.claude && typeof window.claude.use === "function") {
+    try { [db, user, state.sample] = await Promise.all([claude.use("db"), claude.use("user"), claude.use("sample")]); } catch {}
+  }
+  if (state.sample) $("estBtn").hidden = false;
+  if (!db) { useLocal(); return; }
+  state.mode = "shared";
+  try { const c = user ? await user.can("data.write") : null; if (c === false) state.canWrite = false; } catch {}
+  if (!state.me && user) { try { const m = await user.me(); if (m.name) { state.me = m.name.split(" ")[0]; ls.set("msl.me", state.me); } } catch {} }
+  col = db.collection("items");
+  let loaded = false;
+  const t = setTimeout(()=>{ if(!loaded){ banner("The shared list can't be reached yet. It will appear when the connection comes back."); } }, 10000);
+  col.onSnapshot(snap => {
+    state.items = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    if (!snap.metadata.fromCache) { loaded = true; clearTimeout(t); if (state.canWrite) banner(""); }
+    render();
+  }, err => {
+    clearTimeout(t);
+    banner("The shared list stopped syncing. Reopen the page to reconnect.");
+  });
+  if (!state.canWrite) banner("You can view this list. Ask Dave to give you Contributor access so you can add items.");
+  render();
+}
+function useLocal(){
+  state.mode = "local";
+  state.items = ls.get(LOCAL_KEY, []);
+  banner("Saved on this device only. Open the shared link in Claude to sync with the family.");
+  render();
+}
+function saveLocal(){ ls.set(LOCAL_KEY, state.items); render(); }
+function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+async function addItem(data){
+  const id = newId();
+  if (state.mode === "shared") { await col.doc(id).set(data); }
+  else { state.items.push({id, ...data}); saveLocal(); }
+}
+async function patchItem(id, patch){
+  if (state.mode === "shared") { await col.doc(id).update(patch); }
+  else { const it = state.items.find(i=>i.id===id); if(it){Object.assign(it,patch); saveLocal();} }
+}
+async function removeItem(id){
+  if (state.mode === "shared") { await col.doc(id).delete(); }
+  else { state.items = state.items.filter(i=>i.id!==id); saveLocal(); }
+}
+async function guarded(fn, okMsg){
+  try { await fn(); if (okMsg) toast(okMsg); }
+  catch(e){
+    if (e && e.code === "invalid_argument" && state.mode==="shared") { state.canWrite = false; banner("You can view this list but not change it. Ask Dave for Contributor access."); render(); }
+    else if (e && e.code === "quota_exceeded") toast("The list is full. Clear bought items to make room.");
+    else toast("That didn't save. Check your connection and try again.");
+  }
+}
+
+/* ---------- rendering ---------- */
+const lineTotal = it => (Number(it.price)||0) * (Number(it.qty)||1);
+
+function render(){
+  const items = state.items.slice().sort((a,b)=> (a.done?1:0)-(b.done?1:0) || (a.createdAt||0)-(b.createdAt||0));
+  const open = items.filter(i=>!i.done);
+  const scope = state.filter === "all" ? open : open.filter(i=>i.store===state.filter);
+  const total = scope.reduce((s,i)=>s+lineTotal(i),0);
+  const unpriced = scope.filter(i=>!(Number(i.price)>0)).length;
+  const confirmed = scope.filter(i=>i.claimedBy).length;
+
+  $("totalLabel").textContent = state.filter==="all" ? "Estimated total" : "Estimated at " + storeById[state.filter].name;
+  $("totalAmt").textContent = money(total);
+  $("metaLine").textContent = `${scope.length} to buy · ${confirmed} confirmed` + (unpriced ? ` · ${unpriced} unpriced` : "");
+
+  // chips
+  const chips = $("chips"); chips.textContent = "";
+  const mk = (id, label, sub, color) => {
+    const b = document.createElement("button"); b.type="button"; b.className="chip";
+    b.setAttribute("aria-pressed", String(state.filter===id));
+    const t = document.createElement("b");
+    if (color){ const d=document.createElement("i"); d.className="dot"; d.style.setProperty("--c",`var(${color})`); t.append(d); }
+    t.append(label); const s=document.createElement("span"); s.textContent=sub;
+    b.append(t,s); b.onclick=()=>{state.filter=id; render();}; chips.append(b);
+  };
+  mk("all","All stores", money(open.reduce((s,i)=>s+lineTotal(i),0)));
+  STORES.forEach(s=>{
+    const its = open.filter(i=>i.store===s.id);
+    if (its.length || state.filter===s.id) mk(s.id, s.name, `${its.length} · ${money(its.reduce((a,i)=>a+lineTotal(i),0))}`, s.c);
+  });
+
+  // list
+  const list = $("list"); list.textContent = "";
+  const visible = state.filter==="all" ? items : items.filter(i=>i.store===state.filter);
+  if (state.mode === "loading") { list.innerHTML = '<div class="empty"><strong>Loading the list…</strong></div>'; }
+  else if (!visible.length) {
+    const e = document.createElement("div"); e.className="empty";
+    e.innerHTML = "<strong>Nothing on the list yet</strong>Tap <b>Add item</b> to add what you need, pick the store, and set a price to see the estimated total.";
+    list.append(e);
+  } else {
+    const order = state.filter==="all" ? STORES : [storeById[state.filter]];
+    order.forEach(s=>{
+      const its = visible.filter(i=>i.store===s.id || (s.id==="other" && !storeById[i.store]));
+      if (!its.length) return;
+      const g = document.createElement("section"); g.className="group";
+      const h = document.createElement("h2");
+      const d = document.createElement("i"); d.className="dot"; d.style.setProperty("--c",`var(${s.c})`);
+      const sub = document.createElement("span"); sub.className="sub"; sub.textContent = money(its.filter(i=>!i.done).reduce((a,i)=>a+lineTotal(i),0));
+      h.append(d, s.name, sub); g.append(h);
+      const ul = document.createElement("ul");
+      its.forEach(it => ul.append(row(it)));
+      g.append(ul); list.append(g);
+    });
+  }
+  $("clearDone").hidden = !(state.canWrite && items.some(i=>i.done));
+  $("fab").hidden = !state.canWrite || state.mode==="loading";
+  $("whoName").textContent = state.me || "Who are you?";
+}
+
+function row(it){
+  const li = document.createElement("li"); if (it.done) li.className = "done";
+  const ck = document.createElement("button"); ck.type="button"; ck.className="check";
+  ck.setAttribute("aria-label", it.done ? `Mark ${it.name} as not bought` : `Mark ${it.name} as bought`);
+  ck.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green-ink)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  ck.disabled = !state.canWrite;
+  ck.onclick = () => guarded(()=>patchItem(it.id,{done:!it.done, doneBy: !it.done ? (state.me||"") : ""}));
+
+  const body = document.createElement("div"); body.className="body";
+  const nm = document.createElement("div"); nm.className="name";
+  const q = document.createElement("span"); q.className="qty"; q.textContent = `${it.qty||1}×`;
+  nm.append(q, it.name || "Item");
+  const sub = document.createElement("div"); sub.className="sub2";
+  const bits = [];
+  if (it.brand) bits.push(it.brand);
+  if (it.addedBy) bits.push(`added by ${it.addedBy}`);
+  if (it.done && it.doneBy) bits.push(`bought by ${it.doneBy}`);
+  sub.textContent = bits.join(" · ");
+  body.append(nm); if (bits.length) body.append(sub);
+
+  if (state.canWrite && !it.done) {
+    const acts = document.createElement("div"); acts.className="row-actions";
+    const claim = document.createElement("button"); claim.type="button"; claim.className="pill";
+    const mine = it.claimedBy && state.me && it.claimedBy === state.me;
+    if (!it.claimedBy) { claim.textContent = "I'll pick it up"; }
+    else if (mine) { claim.className += " mine"; claim.textContent = "✓ You're getting it"; }
+    else { claim.className += " theirs"; claim.textContent = `✓ ${it.claimedBy} is getting it`; }
+    claim.onclick = () => {
+      if (!state.me) { openName(()=>claim.click()); return; }
+      if (!it.claimedBy || !mine && it.claimedBy) {
+        guarded(()=>patchItem(it.id,{claimedBy: state.me}), `Confirmed: ${state.me} is getting ${it.name}`);
+      } else guarded(()=>patchItem(it.id,{claimedBy: ""}));
+    };
+    const ed = document.createElement("button"); ed.type="button"; ed.className="pill"; ed.textContent="Edit";
+    ed.onclick = () => openSheet(it);
+    const del = document.createElement("button"); del.type="button"; del.className="pill danger";
+    if (state.confirmDelete === it.id) {
+      del.textContent = "Tap again to remove";
+      del.onclick = () => { state.confirmDelete=null; guarded(()=>removeItem(it.id), "Removed"); };
+    } else {
+      del.textContent = "Remove";
+      del.onclick = () => { state.confirmDelete = it.id; render(); setTimeout(()=>{ if(state.confirmDelete===it.id){state.confirmDelete=null;render();} }, 4000); };
+    }
+    acts.append(claim, ed, del); body.append(acts);
+  }
+
+  const tag = document.createElement("div");
+  const p = Number(it.price)||0;
+  if (p > 0) {
+    tag.className = "tag"; tag.textContent = money(lineTotal(it));
+    if ((Number(it.qty)||1) > 1) { const sm=document.createElement("small"); sm.textContent = money(p)+" ea"; tag.append(sm); }
+  } else { tag.className = "tag none"; tag.textContent = "no price"; }
+
+  li.append(ck, body, tag);
+  return li;
+}
+
+/* ---------- add / edit sheet ---------- */
+function renderStorePick(){
+  const box = $("storePick"); box.textContent="";
+  STORES.forEach(s=>{
+    const b=document.createElement("button"); b.type="button"; b.setAttribute("aria-pressed", String(state.pickStore===s.id));
+    const d=document.createElement("i"); d.className="dot"; d.style.setProperty("--c",`var(${s.c})`);
+    b.append(d, s.name); b.onclick=()=>{state.pickStore=s.id; renderStorePick();}; box.append(b);
+  });
+}
+function openSheet(it){
+  state.editingId = it ? it.id : null;
+  $("sheetTitle").textContent = it ? "Edit item" : "Add an item";
+  $("saveBtn").textContent = it ? "Save changes" : "Add to list";
+  $("fName").value = it?.name || ""; $("fBrand").value = it?.brand || "";
+  $("fQty").value = it?.qty || 1; $("fPrice").value = it && Number(it.price)>0 ? it.price : "";
+  state.pickStore = it?.store || (state.filter!=="all" ? state.filter : ls.get("msl.lastStore","costco"));
+  $("estHint").textContent = state.sample ? "Price is optional. Tap Estimate for a typical price." : "Price is optional. It's used for the estimated total.";
+  renderStorePick();
+  $("scrim").hidden=false; $("sheet").hidden=false; setTimeout(()=>$("fName").focus(),50);
+}
+function closeSheets(){ $("scrim").hidden=true; $("sheet").hidden=true; $("nameSheet").hidden=true; }
+$("fab").onclick = () => state.me ? openSheet() : openName(()=>openSheet());
+$("cancelBtn").onclick = closeSheets; $("scrim").onclick = closeSheets;
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeSheets(); });
+$("qMinus").onclick = () => { $("fQty").value = Math.max(1, (parseInt($("fQty").value)||1)-1); };
+$("qPlus").onclick = () => { $("fQty").value = Math.min(999, (parseInt($("fQty").value)||1)+1); };
+
+$("form").addEventListener("submit", e=>{
+  e.preventDefault();
+  const name = $("fName").value.trim(); if (!name) return;
+  const data = {
+    name, brand: $("fBrand").value.trim(),
+    qty: Math.max(1, Math.min(999, parseInt($("fQty").value)||1)),
+    store: state.pickStore,
+    price: Math.max(0, Math.round((parseFloat($("fPrice").value)||0)*100)/100),
+  };
+  ls.set("msl.lastStore", state.pickStore);
+  const id = state.editingId;
+  closeSheets();
+  if (id) guarded(()=>patchItem(id, data), "Saved");
+  else guarded(()=>addItem({...data, addedBy: state.me||"", claimedBy:"", done:false, doneBy:"", createdAt: Date.now()}), `Added ${name}`);
+});
+
+$("estBtn").onclick = async () => {
+  const name = $("fName").value.trim();
+  if (!name) { $("estHint").textContent = "Type the item name first."; return; }
+  const btn = $("estBtn"); btn.disabled = true; btn.textContent = "Estimating…";
+  try {
+    const store = storeById[state.pickStore].name;
+    const brand = $("fBrand").value.trim();
+    const prompt = `Estimate the typical current retail price in US dollars for ONE unit of this grocery/household item as sold at ${store} in the New York City area.
+Item: ${name}${brand?`\nBrand: ${brand}`:""}
+If the store sells it only in bulk packs (e.g. Costco), price one pack. Reply with JSON only: {"unitPrice": number, "unit": "short description of what one unit is, max 6 words"}`;
+    const r = await state.sample.json(prompt, {modelTier:"quick"});
+    const p = Number(r && r.unitPrice);
+    if (p > 0) { $("fPrice").value = p.toFixed(2); $("estHint").textContent = `Estimate: ${money(p)} for ${r.unit || "one unit"}. Edit it if you know better.`; }
+    else $("estHint").textContent = "Couldn't estimate that one. Enter a price yourself.";
+  } catch(e) {
+    if (e && e.code === "not_granted") { btn.hidden = true; $("estHint").textContent = "Estimates are turned off for this page. Enter a price yourself."; }
+    else $("estHint").textContent = e && e.code==="rate_limited" ? "Too many estimates just now. Try again in a minute." : "Couldn't estimate right now. Enter a price yourself.";
+  } finally { btn.disabled = false; btn.textContent = "Estimate"; }
+};
+
+/* ---------- name ---------- */
+let afterName = null;
+function openName(then){ afterName = then||null; $("fWho").value = state.me; $("scrim").hidden=false; $("nameSheet").hidden=false; setTimeout(()=>$("fWho").focus(),50); }
+$("whoBtn").onclick = () => openName();
+$("nameCancel").onclick = closeSheets;
+$("nameForm").addEventListener("submit", e=>{
+  e.preventDefault(); const v = $("fWho").value.trim(); if(!v) return;
+  state.me = v; ls.set("msl.me", v); closeSheets(); render();
+  const f = afterName; afterName = null; if (f) setTimeout(f, 60);
+});
+
+$("clearDone").onclick = async () => {
+  const done = state.items.filter(i=>i.done);
+  for (const it of done) { await guarded(()=>removeItem(it.id)); }
+  toast(`Cleared ${done.length} bought item${done.length===1?"":"s"}`);
+};
+
+/* ---------- misc ---------- */
+function banner(msg){ const b=$("banner"); b.textContent=msg; b.hidden=!msg; }
+let tt; function toast(msg){ const t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(tt); tt=setTimeout(()=>t.hidden=true, 2600); }
+
+render();
+initStore();
+</script>
