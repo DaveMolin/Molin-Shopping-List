@@ -294,7 +294,7 @@ const state = {
 
 /* ---------- storage: Google Sheet via Apps Script ---------- */
 // Paste your Apps Script Web app URL here so family members only need the passcode.
-const SHEET_API_URL = "";
+const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbzQHL7pAng_TiIjBEzjOl13bPuL5Ni36zF4sd1S9wNimXo3WUB7-j21kWGtl6sbHlUw/exec";
 
 const conn = { url: SHEET_API_URL || ls.get("msl.api",""), key: ls.get("msl.key","") };
 let pending = 0, writeSeq = 0, pollTimer = null;
