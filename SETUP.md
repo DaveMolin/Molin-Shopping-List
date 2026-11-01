@@ -24,13 +24,13 @@ How it works: the list lives in a Google Sheet in your Google account. A small s
 
 ## Part 2: Put the app online (about 5 minutes)
 
-7. Merge the `add-shopping-list-app` branch into `main` on GitHub (open the pull request and click **Merge**).
-8. On GitHub, open `index.html` on `main` and click the pencil icon to edit. Find this line:
+7. Make sure the app is on your default branch, **Mo_Sandbox** (already done).
+8. On GitHub, open `index.html` on `Mo_Sandbox` and click the pencil icon to edit. Find this line:
    ```js
    const SHEET_API_URL = "";
    ```
    Paste your Web app URL between the quotes, then click **Commit changes**.
-9. Go to the repo's **Settings → Pages**. Under "Build and deployment", set **Source** to **Deploy from a branch**, choose **main** and **/ (root)**, then click **Save**.
+9. Go to the repo's **Settings → Pages**. Under "Build and deployment", set **Source** to **Deploy from a branch**, choose **Mo_Sandbox** and **/ (root)**, then click **Save**.
 10. After a minute or two, the app is live at:
     **https://davemolin.github.io/Molin-Shopping-List/**
 
