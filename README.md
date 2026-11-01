@@ -8,6 +8,7 @@ A family shopping list that works on any phone.
 - **Automatic price estimates** based on the item, brand and store (you can always type your own price)
 - **Estimated total** for the whole list and a subtotal for each store
 - **My pickups** checklist for whoever is shopping: check items off as you grab them, and the family gets a status update when everything is picked up (or a note of what you couldn't find)
+- **Quick add**: save family items like "Blues Food" once, then add them back to the list in one tap
 - Tick items off as bought, then clear them in one tap
 
 ## Running it

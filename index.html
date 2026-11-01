@@ -98,6 +98,17 @@ li.done .name{text-decoration:line-through;color:var(--done)}
 .success{text-align:center;padding:40px 16px;display:grid;gap:10px;justify-items:center}
 .success .big{width:64px;height:64px;border-radius:50%;background:var(--green);display:grid;place-items:center}
 .success strong{font:800 22px var(--f-display)}
+/* Quick add */
+.quick{margin-top:14px}
+.quick-head{display:flex;align-items:center;justify-content:space-between;font:600 13px var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px}
+.quick-head button{border:0;background:transparent;color:var(--green);font-weight:600;font-size:13px;text-transform:none;letter-spacing:0;padding:2px 4px}
+.qchips{display:flex;flex-wrap:wrap;gap:8px}
+.qchip{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 12px;font-size:14px;font-weight:500}
+.qchip .plus{font-weight:700;color:var(--green)}
+.qchip.editing{border-style:dashed}
+.qchip.editing .plus{color:var(--danger)}
+.save-row{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;color:var(--ink)}
+.save-row input{width:20px;height:20px;accent-color:var(--green);margin:0}
 /* Status updates */
 .updates{display:grid;gap:8px;margin-top:12px}
 .update{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:10px;padding:10px 12px;font-size:14px}
@@ -168,6 +179,10 @@ input,select{width:100%;border:1px solid var(--line);background:var(--bg);border
     <div class="chips" id="chips" role="toolbar" aria-label="Filter by store"></div>
     <div class="banner" id="banner" hidden></div>
     <div class="updates" id="updates"></div>
+    <div class="quick" id="quick" hidden>
+      <div class="quick-head"><span>Quick add</span><button type="button" id="quickEdit">Edit</button></div>
+      <div class="qchips" id="qchips"></div>
+    </div>
     <div id="list"></div>
     <div class="foot-actions"><button class="pill danger" id="clearDone" type="button" hidden>Clear items marked bought</button></div>
   </div>
@@ -202,6 +217,7 @@ input,select{width:100%;border:1px solid var(--line);background:var(--bg);border
       <button type="button" class="est" id="estBtn" hidden>Estimate</button>
     </div>
     <p class="hint" id="estHint" aria-live="polite">Price is optional. It's used for the estimated total.</p>
+    <label class="save-row" for="fSave"><input type="checkbox" id="fSave"> Save as a quick-add item for next time</label>
     <div class="sheet-actions">
       <button type="button" class="btn ghost" id="cancelBtn">Cancel</button>
       <button type="submit" class="btn primary" id="saveBtn">Add to list</button>
@@ -246,10 +262,12 @@ const state = {
   confirmDelete: null, sample: null,
   updates: [], view: "list", tripDone: null, confirmPartial: false, sending: false,
   dismissed: ls.get("msl.dismissed", []),
+  saved: [], quickEditing: false,
 };
 
 /* ---------- storage: shared db in Claude, local fallback elsewhere ---------- */
-let col = null, updCol = null;
+let col = null, updCol = null, savedCol = null;
+const SAVED_KEY = "msl.saved";
 const UPD_KEY = "msl.updates";
 const LOCAL_KEY = "msl.items";
 
@@ -265,6 +283,8 @@ async function initStore(){
   if (!state.me && user) { try { const m = await user.me(); if (m.name) { state.me = m.name.split(" ")[0]; ls.set("msl.me", state.me); } } catch {} }
   col = db.collection("items");
   updCol = db.collection("updates");
+  savedCol = db.collection("saved");
+  savedCol.onSnapshot(snap => { state.saved = snap.docs.map(d => ({id:d.id, ...d.data()})); render(); }, () => {});
   updCol.orderBy("at","desc").limit(10).onSnapshot(snap => {
     state.updates = snap.docs.map(d => ({id:d.id, ...d.data()})); render();
   }, () => {});
@@ -285,6 +305,7 @@ function useLocal(){
   state.mode = "local";
   state.items = ls.get(LOCAL_KEY, []);
   state.updates = ls.get(UPD_KEY, []);
+  state.saved = ls.get(SAVED_KEY, []);
   banner("Saved on this device only. Open the shared link in Claude to sync with the family.");
   render();
 }
@@ -304,6 +325,19 @@ async function addUpdate(data){
   const id = newId();
   if (state.mode === "shared") { await updCol.doc(id).set(data); }
   else { state.updates = [{id, ...data}, ...state.updates].slice(0,10); ls.set(UPD_KEY, state.updates); render(); }
+}
+const savedKey = (name, store) => (name||"").trim().toLowerCase() + "|" + store;
+function findSaved(name, store){ const k = savedKey(name, store); return state.saved.find(q => savedKey(q.name, q.store) === k); }
+async function saveQuick(d){
+  const existing = findSaved(d.name, d.store);
+  const data = {name: d.name, brand: d.brand||"", qty: d.qty||1, store: d.store, price: Number(d.price)||0, priceAuto: !!d.priceAuto, savedBy: state.me||""};
+  const id = existing ? existing.id : newId();
+  if (state.mode === "shared") await savedCol.doc(id).set(data);
+  else { state.saved = existing ? state.saved.map(q=>q.id===id?{id,...data}:q) : [...state.saved, {id, ...data}]; ls.set(SAVED_KEY, state.saved); render(); }
+}
+async function unsaveQuick(id){
+  if (state.mode === "shared") await savedCol.doc(id).delete();
+  else { state.saved = state.saved.filter(q=>q.id!==id); ls.set(SAVED_KEY, state.saved); render(); }
 }
 async function removeItem(id){
   if (state.mode === "shared") { await col.doc(id).delete(); }
@@ -332,6 +366,7 @@ function render(){
   if (state.view === "pickups") { renderPickups(mine); return; }
   $("chips").hidden = false;
   renderUpdates();
+  renderQuick();
   const items = state.items.slice().sort((a,b)=> (a.done?1:0)-(b.done?1:0) || (a.createdAt||0)-(b.createdAt||0));
   const open = items.filter(i=>!i.done);
   const scope = state.filter === "all" ? open : open.filter(i=>i.store===state.filter);
@@ -389,6 +424,7 @@ function render(){
 
 /* ---------- pickup checklist ---------- */
 function renderPickups(mine){
+  $("quick").hidden = true;
   $("chips").hidden = true; $("updates").textContent = ""; $("fab").hidden = true; $("clearDone").hidden = true;
   $("whoName").textContent = state.me || "Who are you?";
   const got = mine.filter(i=>i.done);
@@ -478,6 +514,37 @@ async function completeTrip(mine){
   state.sending = false; render();
 }
 
+/* ---------- quick add ---------- */
+function renderQuick(){
+  const box = $("quick"), wrap = $("qchips");
+  const list = state.saved.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+  box.hidden = !(state.canWrite && list.length);
+  if (!list.length) state.quickEditing = false;
+  $("quickEdit").textContent = state.quickEditing ? "Done" : "Edit";
+  wrap.textContent = "";
+  list.forEach(q=>{
+    const b = document.createElement("button"); b.type = "button"; b.className = "qchip" + (state.quickEditing ? " editing" : "");
+    const plus = document.createElement("span"); plus.className = "plus"; plus.textContent = state.quickEditing ? "×" : "+";
+    const d = document.createElement("i"); d.className = "dot"; d.style.setProperty("--c", `var(${(storeById[q.store]||storeById.other).c})`);
+    b.append(plus, q.name, d);
+    b.title = [q.brand, (storeById[q.store]||storeById.other).name, Number(q.price)>0 ? money(q.price) : ""].filter(Boolean).join(" · ");
+    b.setAttribute("aria-label", state.quickEditing ? `Remove ${q.name} from Quick add` : `Add ${q.name} to the list`);
+    b.onclick = () => state.quickEditing ? guarded(()=>unsaveQuick(q.id), `Removed ${q.name} from Quick add`) : quickAdd(q);
+    wrap.append(b);
+  });
+}
+function quickAdd(q){
+  const already = state.items.find(i => !i.done && savedKey(i.name, i.store) === savedKey(q.name, q.store));
+  if (already) { toast(`${q.name} is already on the list`); return; }
+  if (!state.me) { openName(()=>quickAdd(q)); return; }
+  const price = Number(q.price)||0;
+  const id = newId();
+  const data = {name: q.name, brand: q.brand||"", qty: q.qty||1, store: q.store, price, priceAuto: !!q.priceAuto && price>0,
+    addedBy: state.me, claimedBy: "", done: false, doneBy: "", createdAt: Date.now()};
+  guarded(async ()=>{ await addItem(data, id); if (!(price>0)) backfillPrice(id, data.name, data.brand, data.store); }, `Added ${q.name}`);
+}
+$("quickEdit").onclick = () => { state.quickEditing = !state.quickEditing; render(); };
+
 /* ---------- status updates for the family ---------- */
 function timeAgo(t){
   const m = Math.round((Date.now()-t)/60000);
@@ -558,7 +625,12 @@ function row(it){
       del.textContent = "Remove";
       del.onclick = () => { state.confirmDelete = it.id; render(); setTimeout(()=>{ if(state.confirmDelete===it.id){state.confirmDelete=null;render();} }, 4000); };
     }
-    acts.append(claim, ed, del); body.append(acts);
+    const isSaved = !!findSaved(it.name, it.store);
+    const sv = document.createElement("button"); sv.type="button"; sv.className="pill"; sv.textContent = isSaved ? "★ Saved" : "☆ Save";
+    sv.setAttribute("aria-label", isSaved ? `${it.name} is a saved quick-add item` : `Save ${it.name} as a quick-add item`);
+    sv.disabled = isSaved;
+    sv.onclick = () => guarded(()=>saveQuick(it), `Saved ${it.name} to Quick add`);
+    acts.append(claim, ed, sv, del); body.append(acts);
   }
 
   const tag = document.createElement("div");
@@ -593,6 +665,7 @@ function openSheet(it){
   state.pickStore = it?.store || (state.filter!=="all" ? state.filter : ls.get("msl.lastStore","costco"));
   clearTimeout(estTimer); if (estCtl) { estCtl.abort(); estCtl = null; } estPending = null;
   state.priceManual = !!(it && Number(it.price) > 0 && !it.priceAuto);
+  $("fSave").checked = false;
   $("estBtn").disabled = false; $("estBtn").textContent = it ? "Re-estimate" : "Estimate";
   $("estHint").textContent = state.sample
     ? (state.priceManual ? "Using the price you entered. Tap Re-estimate for a typical price." : "The price fills in automatically from the item, brand and store.")
@@ -617,6 +690,7 @@ $("form").addEventListener("submit", e=>{
     price: Math.max(0, Math.round((parseFloat($("fPrice").value)||0)*100)/100),
   };
   data.priceAuto = !state.priceManual && data.price > 0;
+  if ($("fSave").checked) guarded(()=>saveQuick(data));
   const needsPrice = !(data.price > 0) && !state.priceManual && !!state.sample;
   ls.set("msl.lastStore", state.pickStore);
   let id = state.editingId;
