@@ -12,5 +12,5 @@ A family shopping list that works on any phone.
 - Tick items off as bought, then clear them in one tap
 
 ## Running it
-- **Shared (recommended):** open the published Claude artifact link and share it with family members as Contributors. Everyone sees the same list, live.
+- **Shared (recommended):** open the published Claude artifact link and invite family members by email with edit access. Everyone sees the same list, live.
 - **Standalone:** open `index.html` in a browser (or host it on GitHub Pages). In this mode the list is saved on that device only.

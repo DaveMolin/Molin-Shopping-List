@@ -298,7 +298,7 @@ async function initStore(){
     clearTimeout(t);
     banner("The shared list stopped syncing. Reopen the page to reconnect.");
   });
-  if (!state.canWrite) banner("You can view this list. Ask Dave to give you Contributor access so you can add items.");
+  if (!state.canWrite) banner("You can view this list. Ask Dave to invite you with edit access so you can add items.");
   render();
 }
 function useLocal(){
@@ -346,7 +346,7 @@ async function removeItem(id){
 async function guarded(fn, okMsg){
   try { await fn(); if (okMsg) toast(okMsg); }
   catch(e){
-    if (e && e.code === "invalid_argument" && state.mode==="shared") { state.canWrite = false; banner("You can view this list but not change it. Ask Dave for Contributor access."); render(); }
+    if (e && e.code === "invalid_argument" && state.mode==="shared") { state.canWrite = false; banner("You can view this list but not change it. Ask Dave to invite you with edit access."); render(); }
     else if (e && e.code === "quota_exceeded") toast("The list is full. Clear bought items to make room.");
     else toast("That didn't save. Check your connection and try again.");
   }
