@@ -12,6 +12,7 @@
   --f-display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
   --f-body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-mono:"DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --header:#5CABFF; --header-ink:#0B2545;
   --r:12px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
@@ -27,18 +28,18 @@
 *{box-sizing:border-box}
 html,body{min-height:100%}
 body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);-webkit-font-smoothing:antialiased}
-body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--green)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--header)}
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--green);outline-offset:2px}
 .wrap{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 
 /* Header */
-header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--green);color:var(--green-ink)}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--header);color:var(--header-ink)}
 header .wrap{padding-block:14px 16px;display:grid;gap:10px}
 .toprow{display:flex;justify-content:space-between;align-items:center;gap:12px}
 h1{font:800 22px/1.1 var(--f-display);margin:0;letter-spacing:-.01em;text-wrap:balance}
-.who{display:flex;align-items:center;gap:6px;background:color-mix(in srgb,var(--green-ink) 14%,transparent);border:0;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--green-ink)}
+.who{display:flex;align-items:center;gap:6px;background:color-mix(in srgb,var(--header-ink) 12%,transparent);border:0;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--header-ink)}
 .totals{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .total-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;opacity:.8}
 .total-amt{font:500 30px/1 var(--f-mono);font-variant-numeric:tabular-nums}
