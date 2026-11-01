@@ -107,6 +107,15 @@ li.done .name{text-decoration:line-through;color:var(--done)}
 .success{text-align:center;padding:40px 16px;display:grid;gap:10px;justify-items:center}
 .success .big{width:64px;height:64px;border-radius:50%;background:var(--green);display:grid;place-items:center}
 .success strong{font:800 22px var(--f-display)}
+/* Blue's food */
+.blue{display:flex;align-items:center;gap:12px;margin-top:14px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);cursor:pointer;color:var(--ink);font-size:15px;font-weight:400}
+.blue.on{border-color:var(--green);box-shadow:inset 0 0 0 1px var(--green)}
+.blue input{width:26px;height:26px;accent-color:var(--green);margin:0;flex:none;cursor:pointer}
+.blue-text{display:grid;gap:2px;min-width:0}
+.blue-name{font:700 18px/1.2 var(--f-display);display:flex;align-items:center;gap:6px}
+.blue-sub{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.paw{color:var(--header);flex:none;vertical-align:-4px}
+.name .paw,.qchip .paw{margin:0 3px}
 /* Quick add */
 .quick{margin-top:14px}
 .quick-head{display:flex;align-items:center;justify-content:space-between;font:600 13px var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px}
@@ -195,6 +204,13 @@ body{margin:0}
     <div class="chips" id="chips" role="toolbar" aria-label="Filter by store"></div>
     <div class="banner" id="banner" hidden></div>
     <div class="updates" id="updates"></div>
+    <label class="blue" id="blueCard" for="blueCheck" hidden>
+      <input type="checkbox" id="blueCheck">
+      <span class="blue-text">
+        <span class="blue-name">Blue's <svg class="paw" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><ellipse cx="4.6" cy="10" rx="2.3" ry="2.8" transform="rotate(-18 4.6 10)"/><ellipse cx="9" cy="5.2" rx="2.4" ry="3" transform="rotate(-6 9 5.2)"/><ellipse cx="15" cy="5.2" rx="2.4" ry="3" transform="rotate(6 15 5.2)"/><ellipse cx="19.4" cy="10" rx="2.3" ry="2.8" transform="rotate(18 19.4 10)"/><path d="M12 11.2c-3.4 0-6.6 3.6-6.6 6.5 0 2 1.5 3.1 3.3 3.1 1.4 0 2.2-.7 3.3-.7s1.9.7 3.3.7c1.8 0 3.3-1.1 3.3-3.1 0-2.9-3.2-6.5-6.6-6.5z"/></svg> Food</span>
+        <span class="blue-sub" id="blueSub">Tick to add Blue's food to the list</span>
+      </span>
+    </label>
     <div class="quick" id="quick" hidden>
       <div class="quick-head"><span>Quick add</span><button type="button" id="quickEdit">Edit</button></div>
       <div class="qchips" id="qchips"></div>
@@ -283,9 +299,17 @@ const ls = {
   set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
 };
 
+// The page address remembers the passcode and your name, so a saved link or
+// home-screen icon opens straight to the list even if the phone clears storage.
+const urlParams = new URLSearchParams(location.search);
+const urlKey = urlParams.get("key") || "", urlMe = (urlParams.get("me") || "").trim().slice(0,30);
+if (urlKey) ls.set("msl.key", urlKey);
+if (urlMe) ls.set("msl.me", urlMe);
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {}
+
 const state = {
   items: [], mode: "loading", canWrite: true, filter: "all",
-  me: ls.get("msl.me",""), editingId: null, pickStore: "costco",
+  me: urlMe || ls.get("msl.me",""), editingId: null, pickStore: "costco",
   confirmDelete: null,
   updates: [], view: "list", tripDone: null, confirmPartial: false, sending: false,
   dismissed: ls.get("msl.dismissed", []),
@@ -296,7 +320,15 @@ const state = {
 // Paste your Apps Script Web app URL here so family members only need the passcode.
 const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbzQHL7pAng_TiIjBEzjOl13bPuL5Ni36zF4sd1S9wNimXo3WUB7-j21kWGtl6sbHlUw/exec";
 
-const conn = { url: SHEET_API_URL || ls.get("msl.api",""), key: ls.get("msl.key","") };
+const conn = { url: SHEET_API_URL || ls.get("msl.api",""), key: urlKey || ls.get("msl.key","") };
+function syncUrl(){
+  try {
+    const p = new URLSearchParams(location.search);
+    if (conn.key) p.set("key", conn.key);
+    if (state.me) p.set("me", state.me); else p.delete("me");
+    history.replaceState(null, "", location.pathname + "?" + p.toString() + location.hash);
+  } catch {}
+}
 let pending = 0, writeSeq = 0, pollTimer = null;
 
 function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -327,7 +359,7 @@ async function refresh(){
     const j = await apiGet();
     if (pending || seq !== writeSeq) return;     // a newer change is still on its way; keep what's on screen
     state.items = j.items || []; state.saved = j.saved || []; state.updates = j.updates || [];
-    if (state.mode !== "sheet") { state.mode = "sheet"; banner(""); }
+    if (state.mode !== "sheet") { state.mode = "sheet"; banner(""); syncUrl(); }
     else banner("");
     render();
   } catch(e) {
@@ -362,7 +394,7 @@ $("connectForm").addEventListener("submit", async e=>{
   conn.url = url; conn.key = key;
   try {
     const j = await apiGet();
-    ls.set("msl.api", url); ls.set("msl.key", key);
+    ls.set("msl.api", url); ls.set("msl.key", key); syncUrl();
     state.items = j.items||[]; state.saved = j.saved||[]; state.updates = j.updates||[]; state.mode = "sheet";
     $("connectSheet").hidden = true; $("scrim").hidden = true; banner(""); render(); schedulePoll(15000);
   } catch(err) {
@@ -423,6 +455,7 @@ function render(){
   $("chips").hidden = false;
   renderUpdates();
   renderQuick();
+  renderBlue();
   const items = state.items.slice().sort((a,b)=> (a.done?1:0)-(b.done?1:0) || (a.createdAt||0)-(b.createdAt||0));
   const open = items.filter(i=>!i.done);
   const scope = state.filter === "all" ? open : open.filter(i=>i.store===state.filter);
@@ -480,7 +513,7 @@ function render(){
 
 /* ---------- pickup checklist ---------- */
 function renderPickups(mine){
-  $("quick").hidden = true;
+  $("quick").hidden = true; $("blueCard").hidden = true;
   $("chips").hidden = true; $("updates").textContent = ""; $("fab").hidden = true; $("clearDone").hidden = true;
   $("whoName").textContent = state.me || "Who are you?";
   const got = mine.filter(i=>i.done);
@@ -526,7 +559,7 @@ function renderPickups(mine){
       const body = document.createElement("label"); body.className = "body"; body.htmlFor = cb.id; body.style.cursor="pointer";
       const nm = document.createElement("div"); nm.className = "name";
       const q = document.createElement("span"); q.className = "qty"; q.textContent = `${it.qty||1}×`;
-      nm.append(q, it.name||"Item"); body.append(nm);
+      nm.append(q, nameNode(it.name||"Item")); body.append(nm);
       if (it.brand) { const b = document.createElement("div"); b.className="sub2"; b.textContent = it.brand; body.append(b); }
       const tag = document.createElement("div");
       if (Number(it.price)>0) { tag.className="tag"; tag.textContent = money(lineTotal(it)); } else { tag.className="tag none"; tag.textContent="no price"; }
@@ -572,6 +605,44 @@ async function completeTrip(mine){
   state.sending = false; render();
 }
 
+/* ---------- Blue's food ---------- */
+const PAW_SVG = '<svg class="paw" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><ellipse cx="4.6" cy="10" rx="2.3" ry="2.8" transform="rotate(-18 4.6 10)"/><ellipse cx="9" cy="5.2" rx="2.4" ry="3" transform="rotate(-6 9 5.2)"/><ellipse cx="15" cy="5.2" rx="2.4" ry="3" transform="rotate(6 15 5.2)"/><ellipse cx="19.4" cy="10" rx="2.3" ry="2.8" transform="rotate(18 19.4 10)"/><path d="M12 11.2c-3.4 0-6.6 3.6-6.6 6.5 0 2 1.5 3.1 3.3 3.1 1.4 0 2.2-.7 3.3-.7s1.9.7 3.3.7c1.8 0 3.3-1.1 3.3-3.1 0-2.9-3.2-6.5-6.6-6.5z"/></svg>';
+const isBlue = n => /^blue[’']?s\s+food$/i.test((n||"").trim());
+function nameNode(name){
+  const f = document.createDocumentFragment();
+  if (!isBlue(name)) { f.append(name); return f; }
+  const t = document.createElement("template"); t.innerHTML = PAW_SVG;
+  f.append("Blue's", t.content, "Food");
+  return f;
+}
+function renderBlue(){
+  const card = $("blueCard");
+  card.hidden = !(state.canWrite && state.mode !== "loading");
+  const it = state.items.find(i => !i.done && isBlue(i.name));
+  $("blueCheck").checked = !!it;
+  card.classList.toggle("on", !!it);
+  if (it) {
+    const bits = ["On the list", (storeById[it.store]||storeById.other).name];
+    if (Number(it.price) > 0) bits.push(money(lineTotal(it)));
+    if (it.claimedBy) bits.push(`${it.claimedBy} is getting it`);
+    $("blueSub").textContent = bits.join(" · ");
+  } else $("blueSub").textContent = "Tick to add Blue's food to the list";
+}
+async function toggleBlue(on){
+  if (on) {
+    if (!state.me) { $("blueCheck").checked = false; openName(() => toggleBlue(true)); return; }
+    if (state.items.some(i => !i.done && isBlue(i.name))) return;
+    const q = state.saved.find(x => isBlue(x.name)) || {};
+    await guarded(() => addItem({name: "Blue's Food", brand: q.brand||"", qty: q.qty||1, store: q.store||"other", price: Number(q.price)||0,
+      addedBy: state.me, claimedBy: "", done: false, doneBy: "", reported: false, createdAt: Date.now()}), "Added Blue's food");
+  } else {
+    const its = state.items.filter(i => !i.done && isBlue(i.name));
+    for (const i of its) await guarded(() => removeItem(i.id));
+    toast("Took Blue's food off the list");
+  }
+}
+$("blueCheck").onchange = e => toggleBlue(e.target.checked);
+
 /* ---------- quick add ---------- */
 function renderQuick(){
   const box = $("quick"), wrap = $("qchips");
@@ -584,7 +655,7 @@ function renderQuick(){
     const b = document.createElement("button"); b.type = "button"; b.className = "qchip" + (state.quickEditing ? " editing" : "");
     const plus = document.createElement("span"); plus.className = "plus"; plus.textContent = state.quickEditing ? "×" : "+";
     const d = document.createElement("i"); d.className = "dot"; d.style.setProperty("--c", `var(${(storeById[q.store]||storeById.other).c})`);
-    b.append(plus, q.name, d);
+    b.append(plus, nameNode(q.name), d);
     b.title = [q.brand, (storeById[q.store]||storeById.other).name, Number(q.price)>0 ? money(q.price) : ""].filter(Boolean).join(" · ");
     b.setAttribute("aria-label", state.quickEditing ? `Remove ${q.name} from Quick add` : `Add ${q.name} to the list`);
     b.onclick = () => state.quickEditing ? guarded(()=>unsaveQuick(q.id), `Removed ${q.name} from Quick add`) : quickAdd(q);
@@ -651,7 +722,7 @@ function row(it){
   const body = document.createElement("div"); body.className="body";
   const nm = document.createElement("div"); nm.className="name";
   const q = document.createElement("span"); q.className="qty"; q.textContent = `${it.qty||1}×`;
-  nm.append(q, it.name || "Item");
+  nm.append(q, nameNode(it.name || "Item"));
   const sub = document.createElement("div"); sub.className="sub2";
   const bits = [];
   if (it.brand) bits.push(it.brand);
@@ -755,7 +826,7 @@ $("whoBtn").onclick = () => openName();
 $("nameCancel").onclick = closeSheets;
 $("nameForm").addEventListener("submit", e=>{
   e.preventDefault(); const v = $("fWho").value.trim(); if(!v) return;
-  state.me = v; ls.set("msl.me", v); closeSheets(); render();
+  state.me = v; ls.set("msl.me", v); syncUrl(); closeSheets(); render();
   const f = afterName; afterName = null; if (f) setTimeout(f, 60);
 });
 
