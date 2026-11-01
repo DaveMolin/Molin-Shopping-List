@@ -176,7 +176,7 @@ input,select{width:100%;border:1px solid var(--line);background:var(--bg);border
       <label>Est. price each ($)<input id="fPrice" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></label>
       <button type="button" class="est" id="estBtn" hidden>Estimate</button>
     </div>
-    <p class="hint" id="estHint">Price is optional. It's used for the estimated total.</p>
+    <p class="hint" id="estHint" aria-live="polite">Price is optional. It's used for the estimated total.</p>
     <div class="sheet-actions">
       <button type="button" class="btn ghost" id="cancelBtn">Cancel</button>
       <button type="submit" class="btn primary" id="saveBtn">Add to list</button>
@@ -258,8 +258,8 @@ function useLocal(){
 function saveLocal(){ ls.set(LOCAL_KEY, state.items); render(); }
 function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
-async function addItem(data){
-  const id = newId();
+async function addItem(data, id){
+  id = id || newId();
   if (state.mode === "shared") { await col.doc(id).set(data); }
   else { state.items.push({id, ...data}); saveLocal(); }
 }
@@ -389,7 +389,10 @@ function row(it){
   const p = Number(it.price)||0;
   if (p > 0) {
     tag.className = "tag"; tag.textContent = money(lineTotal(it));
-    if ((Number(it.qty)||1) > 1) { const sm=document.createElement("small"); sm.textContent = money(p)+" ea"; tag.append(sm); }
+    const notes = [];
+    if ((Number(it.qty)||1) > 1) notes.push(money(p)+" ea");
+    if (it.priceAuto) notes.push("est.");
+    if (notes.length) { const sm=document.createElement("small"); sm.textContent = notes.join(" · "); tag.append(sm); }
   } else { tag.className = "tag none"; tag.textContent = "no price"; }
 
   li.append(ck, body, tag);
@@ -402,7 +405,7 @@ function renderStorePick(){
   STORES.forEach(s=>{
     const b=document.createElement("button"); b.type="button"; b.setAttribute("aria-pressed", String(state.pickStore===s.id));
     const d=document.createElement("i"); d.className="dot"; d.style.setProperty("--c",`var(${s.c})`);
-    b.append(d, s.name); b.onclick=()=>{state.pickStore=s.id; renderStorePick();}; box.append(b);
+    b.append(d, s.name); b.onclick=()=>{ if (state.pickStore!==s.id){ state.pickStore=s.id; renderStorePick(); scheduleEstimate(); } }; box.append(b);
   });
 }
 function openSheet(it){
@@ -412,7 +415,12 @@ function openSheet(it){
   $("fName").value = it?.name || ""; $("fBrand").value = it?.brand || "";
   $("fQty").value = it?.qty || 1; $("fPrice").value = it && Number(it.price)>0 ? it.price : "";
   state.pickStore = it?.store || (state.filter!=="all" ? state.filter : ls.get("msl.lastStore","costco"));
-  $("estHint").textContent = state.sample ? "Price is optional. Tap Estimate for a typical price." : "Price is optional. It's used for the estimated total.";
+  clearTimeout(estTimer); if (estCtl) { estCtl.abort(); estCtl = null; } estPending = null;
+  state.priceManual = !!(it && Number(it.price) > 0 && !it.priceAuto);
+  $("estBtn").disabled = false; $("estBtn").textContent = it ? "Re-estimate" : "Estimate";
+  $("estHint").textContent = state.sample
+    ? (state.priceManual ? "Using the price you entered. Tap Re-estimate for a typical price." : "The price fills in automatically from the item, brand and store.")
+    : "Price is optional. It's used for the estimated total.";
   renderStorePick();
   $("scrim").hidden=false; $("sheet").hidden=false; setTimeout(()=>$("fName").focus(),50);
 }
@@ -432,32 +440,87 @@ $("form").addEventListener("submit", e=>{
     store: state.pickStore,
     price: Math.max(0, Math.round((parseFloat($("fPrice").value)||0)*100)/100),
   };
+  data.priceAuto = !state.priceManual && data.price > 0;
+  const needsPrice = !(data.price > 0) && !state.priceManual && !!state.sample;
   ls.set("msl.lastStore", state.pickStore);
-  const id = state.editingId;
+  let id = state.editingId;
+  clearTimeout(estTimer); estCtl = null;
   closeSheets();
-  if (id) guarded(()=>patchItem(id, data), "Saved");
-  else guarded(()=>addItem({...data, addedBy: state.me||"", claimedBy:"", done:false, doneBy:"", createdAt: Date.now()}), `Added ${name}`);
+  const after = () => { if (needsPrice) backfillPrice(id, data.name, data.brand, data.store); };
+  if (id) guarded(async ()=>{ await patchItem(id, data); after(); }, "Saved");
+  else {
+    id = newId();
+    guarded(async ()=>{ await addItem({...data, addedBy: state.me||"", claimedBy:"", done:false, doneBy:"", createdAt: Date.now()}, id); after(); },
+      needsPrice ? `Added ${name}. Pricing it now…` : `Added ${name}`);
+  }
 });
 
-$("estBtn").onclick = async () => {
-  const name = $("fName").value.trim();
-  if (!name) { $("estHint").textContent = "Type the item name first."; return; }
-  const btn = $("estBtn"); btn.disabled = true; btn.textContent = "Estimating…";
-  try {
-    const store = storeById[state.pickStore].name;
-    const brand = $("fBrand").value.trim();
-    const prompt = `Estimate the typical current retail price in US dollars for ONE unit of this grocery/household item as sold at ${store} in the New York City area.
-Item: ${name}${brand?`\nBrand: ${brand}`:""}
+/* ---------- automatic price estimates ---------- */
+const estCache = new Map();
+async function fetchEstimate(name, brand, storeId, signal){
+  const key = [name, brand, storeId].join("|").toLowerCase();
+  if (estCache.has(key)) return estCache.get(key);
+  const store = storeById[storeId].name;
+  const prompt = `Estimate the typical current retail price in US dollars for ONE unit of this grocery/household item as sold at ${store} in the New York City area.
+Item: ${name}${brand?`\nBrand: ${brand}`:"\nBrand: any common brand"}
 If the store sells it only in bulk packs (e.g. Costco), price one pack. Reply with JSON only: {"unitPrice": number, "unit": "short description of what one unit is, max 6 words"}`;
-    const r = await state.sample.json(prompt, {modelTier:"quick"});
-    const p = Number(r && r.unitPrice);
-    if (p > 0) { $("fPrice").value = p.toFixed(2); $("estHint").textContent = `Estimate: ${money(p)} for ${r.unit || "one unit"}. Edit it if you know better.`; }
-    else $("estHint").textContent = "Couldn't estimate that one. Enter a price yourself.";
+  const r = await state.sample.json(prompt, {modelTier:"quick", signal});
+  const p = Number(r && r.unitPrice);
+  const out = p > 0 ? {price: Math.round(p*100)/100, unit: r.unit || "one unit"} : null;
+  if (out) estCache.set(key, out);
+  return out;
+}
+function estFailMsg(e){
+  if (e && e.code === "not_granted") { state.sample = null; $("estBtn").hidden = true; return "Price estimates are turned off for this page. Enter a price yourself."; }
+  if (e && e.code === "rate_limited") return "Too many estimates just now. Enter a price or try again in a minute.";
+  return "Couldn't estimate right now. Enter a price yourself.";
+}
+let estTimer = null, estCtl = null, estPending = null;
+function scheduleEstimate(force){
+  clearTimeout(estTimer);
+  if (!state.sample) return;
+  if (state.priceManual && !force) return;
+  const name = $("fName").value.trim();
+  if (name.length < 2) { if (force) $("estHint").textContent = "Type the item name first."; return; }
+  estTimer = setTimeout(()=>runEstimate(force), force ? 0 : 700);
+}
+async function runEstimate(force){
+  if (estCtl) estCtl.abort();
+  const ctl = estCtl = new AbortController();
+  const name = $("fName").value.trim(), brand = $("fBrand").value.trim(), store = state.pickStore;
+  const btn = $("estBtn"); btn.disabled = true; btn.textContent = "Pricing…";
+  $("estHint").textContent = `Estimating price at ${storeById[store].name}…`;
+  const job = fetchEstimate(name, brand, store, ctl.signal);
+  estPending = job.catch(()=>null);
+  try {
+    const r = await job;
+    if (ctl !== estCtl) return;
+    if (state.priceManual && !force) return;
+    if (r) {
+      $("fPrice").value = r.price.toFixed(2); state.priceManual = false;
+      $("estHint").textContent = `Estimated ${money(r.price)} for ${r.unit} at ${storeById[store].name}. Change it if you know the real price.`;
+    } else $("estHint").textContent = "Couldn't estimate that one. Enter a price yourself.";
   } catch(e) {
-    if (e && e.code === "not_granted") { btn.hidden = true; $("estHint").textContent = "Estimates are turned off for this page. Enter a price yourself."; }
-    else $("estHint").textContent = e && e.code==="rate_limited" ? "Too many estimates just now. Try again in a minute." : "Couldn't estimate right now. Enter a price yourself.";
-  } finally { btn.disabled = false; btn.textContent = "Estimate"; }
-};
+    if (ctl !== estCtl || (e && e.name === "AbortError")) return;
+    $("estHint").textContent = estFailMsg(e);
+  } finally {
+    if (ctl === estCtl) { btn.disabled = false; btn.textContent = "Re-estimate"; estCtl = null; }
+  }
+}
+$("fName").addEventListener("input", ()=>scheduleEstimate());
+$("fBrand").addEventListener("input", ()=>scheduleEstimate());
+$("fPrice").addEventListener("input", ()=>{ state.priceManual = $("fPrice").value !== ""; if (state.priceManual) { clearTimeout(estTimer); if (estCtl) { estCtl.abort(); estCtl = null; $("estBtn").disabled=false; $("estBtn").textContent="Re-estimate"; } $("estHint").textContent = "Using your price."; } });
+$("estBtn").onclick = () => { state.priceManual = false; scheduleEstimate(true); };
+
+/* Price items that were saved before an estimate came back. */
+async function backfillPrice(id, name, brand, store){
+  if (!state.sample) return;
+  try {
+    const r = await fetchEstimate(name, brand, store);
+    const it = state.items.find(i=>i.id===id);
+    if (r && (!it || !(Number(it.price)>0))) await patchItem(id, {price: r.price, priceAuto: true});
+  } catch {}
+}
 
 /* ---------- name ---------- */
 let afterName = null;
