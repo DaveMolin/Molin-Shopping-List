@@ -49,7 +49,7 @@ How it works: the list lives in a Google Sheet in your Google account. A small s
 - **Changes show up within about 15 seconds** on other phones, and right away when someone reopens the app.
 - **You can look at or fix the list in the Google Sheet.** If you type in a store, use one of: Costco, ShopRite, Food Universe, Stop & Shop, Amazon, Other.
 - **Updating the Google code** (when a new version of `apps-script/Code.gs` comes out): open the sheet → **Extensions → Apps Script**, select all the old code and paste the new code over it, put your passcode back on the `FAMILY_PASSCODE` line, click **Save**, then **Deploy → Manage deployments → ✏️ (pencil) → Version: New version → Deploy**. The Web app URL stays the same, and new tabs (like Meals and Archive) are added by themselves.
-- **Changing the passcode:** edit it in Apps Script, save, then do **Deploy → Manage deployments → ✏️ → Version: New version → Deploy**. Everyone will be asked for the new passcode.
+- **The passcode is built into the app** (`FAMILY_PASSCODE` near the top of the script in `index.html`), so family members never type it. **Changing it:** change it in Apps Script, save, redeploy (**Deploy → Manage deployments → ✏️ → Version: New version → Deploy**), then change `FAMILY_PASSCODE` in `index.html` to match.
 - **If you ever change `Code.gs`**, redeploy the same way (Manage deployments → New version). The Web app URL stays the same.
-- **Privacy:** anyone with both the link and the passcode can see and change the list. Without the passcode, the app shows nothing.
+- **Privacy:** because the repo is public and the passcode is built into the app, anyone who finds the repo could open the list. That's fine for a shopping list, but don't keep anything private in the sheet.
 - **GitHub Pages needs the repo to be public** on a free GitHub plan. The list itself stays in your Google Sheet, not on GitHub.

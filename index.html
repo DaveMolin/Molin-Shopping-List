@@ -410,13 +410,15 @@ const state = {
 // The family's Apps Script Web app URL. Family members only need the passcode.
 const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbzQHL7pAng_TiIjBEzjOl13bPuL5Ni36zF4sd1S9wNimXo3WUB7-j21kWGtl6sbHlUw/exec";
 
-const conn = { url: SHEET_API_URL || ls.get("msl.api",""), key: urlKey || ls.get("msl.key","") };
+// Built in so family members never have to type it. It must match FAMILY_PASSCODE in the Google code.
+const FAMILY_PASSCODE = "Blue5";
+const conn = { url: SHEET_API_URL || ls.get("msl.api",""), key: FAMILY_PASSCODE || urlKey || ls.get("msl.key","") };
 let pending = 0, writeSeq = 0, pollTimer = null;
 
 function syncUrl(){
   try {
     const p = new URLSearchParams(location.search);
-    if (conn.key) p.set("key", conn.key);
+    if (conn.key && !FAMILY_PASSCODE) p.set("key", conn.key); else p.delete("key");
     if (state.me) p.set("me", state.me); else p.delete("me");
     history.replaceState(null, "", location.pathname + "?" + p.toString() + location.hash);
   } catch {}
@@ -493,6 +495,7 @@ $("connectForm").addEventListener("submit", async e=>{
   } finally { $("connectBtn").disabled = false; $("connectBtn").textContent = "Open the list"; }
 });
 $("reconnect").onclick = () => { closeSheets(); openConnect(); };
+$("reconnect").hidden = !!FAMILY_PASSCODE;
 
 async function guarded(fn, okMsg){
   try { await fn(); if (okMsg) toast(okMsg); return true; }
