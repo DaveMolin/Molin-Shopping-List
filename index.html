@@ -13,10 +13,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600&family=DM+Mono:wght@500&display=swap">
 <style>
-/* Layout: one phone-width column; sticky total bar on top, store chips, item list grouped by store, add sheet slides up from bottom. */
+/* Layout: one phone-width column; blue header on top, three tabs (List, Meals, History) in a bar at the bottom. */
 :root{
   --bg:#F4F6F0; --surface:#FFFFFF; --ink:#1C2A21; --muted:#5E6E63; --line:#DCE3D8;
-  --green:#2E6A4C; --green-ink:#FFFFFF; --tag:#F3C731; --tag-ink:#2A2306;
+  --green:#2E6A4C; --green-ink:#FFFFFF; --amber:#E0A21B;
   --danger:#B23A2E; --done:#9AA89E;
   --s-costco:#C8372D; --s-shoprite:#D9452B; --s-fu:#2F7D4E; --s-sas:#6B3FA0; --s-amazon:#E8922A; --s-other:#5C6B78;
   --f-display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
@@ -27,20 +27,23 @@
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#111813; --surface:#1A231D; --ink:#E6EDE7; --muted:#9AAA9F; --line:#2C3830;
-  --green:#5DBB8A; --green-ink:#0D1A12; --tag:#E9BF2C; --tag-ink:#231C02; --danger:#F07A6C; --done:#5E6C63;
+  --green:#5DBB8A; --green-ink:#0D1A12; --amber:#E9BF2C; --danger:#F07A6C; --done:#5E6C63;
   --s-costco:#F06A5F; --s-shoprite:#F27A5E; --s-fu:#5DBB8A; --s-sas:#A98BE0; --s-amazon:#F2AE5A; --s-other:#93A3B0;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#111813; --surface:#1A231D; --ink:#E6EDE7; --muted:#9AAA9F; --line:#2C3830;
-  --green:#5DBB8A; --green-ink:#0D1A12; --tag:#E9BF2C; --tag-ink:#231C02; --danger:#F07A6C; --done:#5E6C63;
+  --green:#5DBB8A; --green-ink:#0D1A12; --amber:#E9BF2C; --danger:#F07A6C; --done:#5E6C63;
   --s-costco:#F06A5F; --s-shoprite:#F27A5E; --s-fu:#5DBB8A; --s-sas:#A98BE0; --s-amazon:#F2AE5A; --s-other:#93A3B0;
   color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
+html{padding-top:env(safe-area-inset-top,0px)}
 html,body{min-height:100%}
-body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);-webkit-font-smoothing:antialiased}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--header)}
-button,input,select{font:inherit;color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
+button:disabled{cursor:default;opacity:.55}
 :focus-visible{outline:2px solid var(--green);outline-offset:2px}
 .wrap{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 
@@ -51,32 +54,38 @@ header .wrap{padding-block:14px 16px;display:grid;gap:10px}
 .brand{display:flex;align-items:center;gap:10px;min-width:0}
 .logo{width:34px;height:34px;flex:none;border-radius:9px;box-shadow:0 2px 6px rgba(11,37,69,.18)}
 h1{font:800 22px/1.1 var(--f-display);margin:0;letter-spacing:-.01em;text-wrap:balance}
-.who{display:flex;align-items:center;gap:6px;background:color-mix(in srgb,var(--header-ink) 12%,transparent);border:0;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--header-ink)}
-.totals{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.total-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;opacity:.8}
-.total-amt{font:500 30px/1 var(--f-mono);font-variant-numeric:tabular-nums}
+.who{display:flex;align-items:center;gap:6px;background:color-mix(in srgb,var(--header-ink) 12%,transparent);border:0;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--header-ink);flex:none}
+.summary{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sum-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;opacity:.8}
+.sum-big{font:800 28px/1.05 var(--f-display);letter-spacing:-.01em}
 .meta{font-size:13px;opacity:.9;text-align:right}
+.mine-btn{justify-self:start;display:flex;align-items:center;gap:8px;border:0;border-radius:999px;padding:8px 14px;font-weight:600;font-size:14px;background:var(--header-ink);color:var(--header)}
+.mine-btn .n{font:500 13px var(--f-mono);background:var(--header);color:var(--header-ink);border-radius:999px;padding:1px 8px}
+
+/* Page */
+main .wrap{padding-block:8px calc(env(safe-area-inset-bottom,0px) + 170px)}
+.banner{margin-top:12px;font-size:13px;padding:10px 12px;border-radius:10px;background:var(--surface);border:1px dashed var(--line);color:var(--muted)}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font:600 13px var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:18px 0 8px}
+.section-head button{border:0;background:transparent;color:var(--green);font-weight:600;font-size:13px;text-transform:none;letter-spacing:0;padding:2px 4px}
+.empty{text-align:center;padding:40px 16px;color:var(--muted)}
+.empty strong{display:block;font:600 18px var(--f-display);color:var(--ink);margin-bottom:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--c,var(--s-other));flex:none;display:inline-block}
 
 /* Store chips */
-.chips{display:flex;gap:8px;overflow-x:auto;padding-block:14px 4px;scrollbar-width:none}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-block:14px 2px;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
-.chip{flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:1px;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:7px 12px;min-width:84px;text-align:left}
-.chip b{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
-.chip span{font:500 12px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.chip{flex:none;display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 12px;font-size:13.5px;font-weight:600}
+.chip .n{font:500 12px var(--f-mono);color:var(--muted)}
 .chip[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--c,var(--s-other));flex:none}
 
-.banner{margin-top:12px;font-size:13px;padding:10px 12px;border-radius:10px;background:var(--surface);border:1px dashed var(--line);color:var(--muted)}
-
-/* List */
-main .wrap{padding-block:8px 120px}
+/* Item list */
 .group{margin-top:18px}
 .group h2{display:flex;align-items:center;gap:8px;font:600 13px var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px}
-.group h2 .sub{margin-left:auto;font:500 13px var(--f-mono);letter-spacing:0;color:var(--ink);font-variant-numeric:tabular-nums}
-ul{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
-li{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;padding:12px;border-top:1px solid var(--line)}
-li:first-child{border-top:0}
-.check{width:26px;height:26px;border-radius:7px;border:2px solid var(--line);background:transparent;display:grid;place-items:center;margin-top:1px}
+.group h2 .sub{margin-left:auto;font:500 13px var(--f-mono);letter-spacing:0;color:var(--ink)}
+ul.card{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+ul.card > li{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;padding:12px;border-top:1px solid var(--line)}
+ul.card > li:first-child{border-top:0}
+.check{width:26px;height:26px;border-radius:7px;border:2px solid var(--line);background:transparent;display:grid;place-items:center;margin-top:1px;padding:0}
 .check svg{opacity:0}
 li.done .check{background:var(--green);border-color:var(--green)}
 li.done .check svg{opacity:1}
@@ -84,33 +93,30 @@ li.done .check svg{opacity:1}
 .name{font-weight:600;font-size:16px;overflow-wrap:anywhere}
 .qty{font:500 13px var(--f-mono);color:var(--muted);margin-right:4px}
 .sub2{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.meal-tag{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--ink);background:color-mix(in srgb,var(--amber) 22%,transparent);border-radius:999px;padding:1px 8px;margin-top:3px}
 li.done .name{text-decoration:line-through;color:var(--done)}
 .row-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .pill{border:1px solid var(--line);background:transparent;border-radius:999px;padding:4px 10px;font-size:12.5px;font-weight:600;color:var(--muted)}
 .pill.mine{background:var(--green);border-color:var(--green);color:var(--green-ink)}
 .pill.theirs{border-color:var(--green);color:var(--green)}
+.pill.go{background:var(--green);border-color:var(--green);color:var(--green-ink)}
 .pill.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,var(--line))}
-/* shelf price tag */
-.tag{font:500 13px var(--f-mono);font-variant-numeric:tabular-nums;background:var(--tag);color:var(--tag-ink);padding:3px 8px 3px 12px;border-radius:3px 6px 6px 3px;position:relative;white-space:nowrap}
-.tag::before{content:"";position:absolute;left:4px;top:50%;width:4px;height:4px;margin-top:-2px;border-radius:50%;background:var(--bg)}
-.tag.none{background:transparent;color:var(--muted);border:1px dashed var(--line);padding-left:8px}
-.tag.none::before{display:none}
-.tag small{display:block;font-size:10.5px;opacity:.75;text-align:right}
+.foot-actions{display:flex;justify-content:center;margin-top:22px}
 
-/* My pickups */
-.mine-btn{justify-self:start;display:flex;align-items:center;gap:8px;border:0;border-radius:999px;padding:8px 14px;font-weight:600;font-size:14px;background:var(--header-ink);color:var(--header)}
-.mine-btn .n{font:500 13px var(--f-mono);background:var(--header);color:var(--header-ink);border-radius:999px;padding:1px 8px}
-.backrow{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px}
-.progress{height:8px;border-radius:999px;background:var(--line);overflow:hidden;margin-top:12px}
+/* Status banners */
+.updates{display:grid;gap:8px;margin-top:12px}
+.update{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:10px;padding:10px 12px;font-size:14px}
+.update.partial{border-left-color:var(--amber)}
+.update.live{border-left-color:var(--header);background:color-mix(in srgb,var(--header) 10%,var(--surface))}
+.update .ic{font-weight:700;color:var(--green);display:grid;place-items:center;width:20px}
+.update.live .ic{color:var(--header)}
+.update .line{font-weight:600}
+.update .when{font-size:12px;color:var(--muted)}
+.update .x{border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;padding:2px 4px}
+.progress{height:8px;border-radius:999px;background:var(--line);overflow:hidden;margin-top:6px}
 .progress i{display:block;height:100%;background:var(--green);transition:width .25s}
-.pick li{grid-template-columns:auto 1fr auto;align-items:center;cursor:pointer}
-.pick input[type=checkbox]{width:28px;height:28px;accent-color:var(--green);margin:0;cursor:pointer}
-.pick label.body{display:block;color:var(--ink);font-weight:400;font-size:15px}
-.pick li.done .name{text-decoration:line-through;color:var(--done)}
-.trip-actions{display:grid;gap:10px;margin-top:18px}
-.success{text-align:center;padding:40px 16px;display:grid;gap:10px;justify-items:center}
-.success .big{width:64px;height:64px;border-radius:50%;background:var(--green);display:grid;place-items:center}
-.success strong{font:800 22px var(--f-display)}
+.update.live .progress i{background:var(--header)}
+
 /* Blue's food */
 .blue{display:flex;align-items:center;gap:12px;margin-top:14px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);cursor:pointer;color:var(--ink);font-size:15px;font-weight:400}
 .blue.on{border-color:var(--green);box-shadow:inset 0 0 0 1px var(--green)}
@@ -119,63 +125,86 @@ li.done .name{text-decoration:line-through;color:var(--done)}
 .blue-name{font:700 18px/1.2 var(--f-display);display:flex;align-items:center;gap:6px}
 .blue-sub{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
 .paw{color:var(--header);flex:none;vertical-align:-4px}
-.name .paw,.qchip .paw{margin:0 3px}
+.name .paw,.qchip .paw,.nm .paw{margin:0 3px}
+
 /* Quick add */
-.quick{margin-top:14px}
-.quick-head{display:flex;align-items:center;justify-content:space-between;font:600 13px var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px}
-.quick-head button{border:0;background:transparent;color:var(--green);font-weight:600;font-size:13px;text-transform:none;letter-spacing:0;padding:2px 4px}
 .qchips{display:flex;flex-wrap:wrap;gap:8px}
 .qchip{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 12px;font-size:14px;font-weight:500}
 .qchip .plus{font-weight:700;color:var(--green)}
 .qchip.editing{border-style:dashed}
 .qchip.editing .plus{color:var(--danger)}
-.save-row{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;color:var(--ink)}
-.save-row input{width:20px;height:20px;accent-color:var(--green);margin:0}
-/* Status updates */
-.updates{display:grid;gap:8px;margin-top:12px}
-.update{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:10px;padding:10px 12px;font-size:14px}
-.update.partial{border-left-color:var(--tag)}
-.update .when{font-size:12px;color:var(--muted)}
-.update .x{border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;padding:2px 4px}
-.empty{text-align:center;padding:48px 16px;color:var(--muted)}
-.empty strong{display:block;font:600 18px var(--f-display);color:var(--ink);margin-bottom:6px}
 
-.foot-actions{display:flex;justify-content:center;margin-top:20px}
+/* My pickups */
+.trip-start{display:grid;gap:6px;margin-top:14px;padding:14px;border-radius:var(--r);background:color-mix(in srgb,var(--header) 14%,var(--surface));border:1px solid color-mix(in srgb,var(--header) 50%,var(--line))}
+.trip-start p{margin:0;font-size:13.5px;color:var(--muted)}
+.trip-on{margin-top:14px;font-size:13.5px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.trip-on .pulse{width:10px;height:10px;border-radius:50%;background:var(--header);flex:none}
+@media (prefers-reduced-motion:no-preference){.trip-on .pulse{animation:pulse 1.6s ease-in-out infinite}@keyframes pulse{50%{opacity:.35}}}
+.pick > li{align-items:center}
+.pick input[type=checkbox]{width:28px;height:28px;accent-color:var(--green);margin:0;cursor:pointer}
+.pick label.body{display:block;color:var(--ink);font-weight:400;font-size:15px;cursor:pointer}
+.trip-actions{display:grid;gap:10px;margin-top:18px}
+.success{text-align:center;padding:40px 16px;display:grid;gap:10px;justify-items:center}
+.success .big{width:64px;height:64px;border-radius:50%;background:var(--green);display:grid;place-items:center}
+.success strong{font:800 22px var(--f-display)}
 
-/* FAB */
-.fab{position:fixed;right:max(16px,calc(env(safe-area-inset-right,0px) + 16px));bottom:calc(env(safe-area-inset-bottom,0px) + 18px);z-index:6;border:0;background:var(--ink);color:var(--bg);border-radius:999px;padding:14px 20px;font-weight:600;display:flex;align-items:center;gap:8px;box-shadow:0 6px 20px rgba(0,0,0,.22)}
+/* Meals */
+.meals{display:grid;gap:10px;margin-top:14px}
+.meal{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:6px}
+.meal h3{margin:0;font:700 18px/1.2 var(--f-display);overflow-wrap:anywhere}
+.meal .ingr{font-size:14px;color:var(--ink);overflow-wrap:anywhere}
+.meal .sub2{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 
-/* Sheet */
+/* History */
+.hist{display:grid;gap:10px;margin-top:14px}
+.arch{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.arch-head{width:100%;display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;text-align:left;border:0;background:transparent;padding:14px}
+.arch-head strong{font:700 16px var(--f-display)}
+.arch-head .chev{grid-row:1/3;grid-column:2;color:var(--muted);transition:transform .2s}
+.arch.open .arch-head .chev{transform:rotate(180deg)}
+.arch-items{list-style:none;margin:0;padding:0 14px 6px;display:grid}
+.arch-items li{display:grid;grid-template-columns:20px 1fr;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:14.5px}
+.arch-items .mark{color:var(--green);font-weight:700}
+.arch-items li.missed .mark{color:var(--muted)}
+.arch-items li.missed .nm{color:var(--muted)}
+.arch-actions{display:flex;gap:8px;flex-wrap:wrap;padding:6px 14px 14px}
+
+/* Bottom tabs, floating button, toast */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:8;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
+.tabbar .in{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr)}
+.tab{border:0;background:transparent;padding:8px 4px 10px;display:grid;justify-items:center;gap:2px;font-size:12px;font-weight:600;color:var(--muted)}
+.tab[aria-current="page"]{color:var(--green)}
+.fab{position:fixed;right:max(16px,calc(env(safe-area-inset-right,0px) + 16px));bottom:calc(env(safe-area-inset-bottom,0px) + 78px);z-index:6;border:0;background:var(--ink);color:var(--bg);border-radius:999px;padding:14px 20px;font-weight:600;display:flex;align-items:center;gap:8px;box-shadow:0 6px 20px rgba(0,0,0,.22)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 144px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;z-index:30;max-width:calc(100% - 32px);text-align:center}
+
+/* Sheets (forms that slide up) */
 .scrim{position:fixed;inset:0;background:rgba(10,20,14,.45);z-index:20}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--surface);border-radius:18px 18px 0 0;max-height:92vh;overflow:auto;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 16px)}
 .sheet .wrap{padding-block:18px 4px;display:grid;gap:14px}
 .sheet h3{font:800 20px var(--f-display);margin:0}
 label{display:grid;gap:5px;font-size:13px;font-weight:600;color:var(--muted)}
-input,select{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:11px 12px;font-size:16px;font-weight:400;color:var(--ink)}
+input,select,textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:11px 12px;font-size:16px;font-weight:400;color:var(--ink)}
+textarea{resize:vertical;min-height:150px;line-height:1.5}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field-label{font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px}
 .stores{display:flex;flex-wrap:wrap;gap:8px}
 .stores button{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:7px 12px;font-size:14px;display:flex;align-items:center;gap:6px}
 .stores button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .stepper{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg)}
 .stepper button{border:0;background:transparent;width:44px;font-size:20px}
 .stepper input{border:0;border-radius:0;text-align:center;background:transparent;font-family:var(--f-mono)}
-.price-row{display:flex;gap:8px;align-items:end}
-.price-row label{flex:1}
-.est{border:1px solid var(--green);color:var(--green);background:transparent;border-radius:10px;padding:11px 12px;font-weight:600;white-space:nowrap}
-.est[disabled]{opacity:.5}
+.save-row{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;color:var(--ink)}
+.save-row input{width:20px;height:20px;accent-color:var(--green);margin:0}
 .hint{font-size:12.5px;color:var(--muted);margin:-6px 0 0}
-.sheet-actions{display:flex;gap:10px;justify-content:flex-end}
+.sheet-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
 .btn{border:0;border-radius:10px;padding:12px 18px;font-weight:600}
 .btn.primary{background:var(--green);color:var(--green-ink)}
 .btn.ghost{background:transparent;border:1px solid var(--line)}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 84px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;z-index:30;max-width:calc(100% - 32px)}
-@media (prefers-reduced-motion:no-preference){.sheet{animation:up .22s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
-@media (max-width:380px){.two{grid-template-columns:1fr}}
-[hidden]{display:none!important}
-html{padding-top:env(safe-area-inset-top,0px)}
-body{margin:0}
+.btn.wide{width:100%}
 .err{color:var(--danger);font-size:13.5px;margin:0}
 .linkbtn{border:0;background:transparent;color:var(--green);font-weight:600;font-size:13px;padding:0;justify-self:start;text-decoration:underline}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .22s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
+@media (max-width:380px){.two{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -189,12 +218,12 @@ body{margin:0}
         <span id="whoName">Who are you?</span>
       </button>
     </div>
-    <div class="totals">
+    <div class="summary">
       <div>
-        <div class="total-label" id="totalLabel">Estimated total</div>
-        <div class="total-amt" id="totalAmt">$0.00</div>
+        <div class="sum-label" id="sumLabel">To buy</div>
+        <div class="sum-big" id="sumBig">0 items</div>
       </div>
-      <div class="meta" id="metaLine">0 items</div>
+      <div class="meta" id="metaLine"></div>
     </div>
     <button class="mine-btn" id="mineBtn" type="button" hidden>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>
@@ -205,37 +234,69 @@ body{margin:0}
 
 <main>
   <div class="wrap">
-    <div class="chips" id="chips" role="toolbar" aria-label="Filter by store"></div>
     <div class="banner" id="banner" hidden></div>
-    <div class="updates" id="updates"></div>
-    <label class="blue" id="blueCard" for="blueCheck" hidden>
-      <input type="checkbox" id="blueCheck">
-      <span class="blue-text">
-        <span class="blue-name">Blue's <svg class="paw" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><ellipse cx="4.6" cy="10" rx="2.3" ry="2.8" transform="rotate(-18 4.6 10)"/><ellipse cx="9" cy="5.2" rx="2.4" ry="3" transform="rotate(-6 9 5.2)"/><ellipse cx="15" cy="5.2" rx="2.4" ry="3" transform="rotate(6 15 5.2)"/><ellipse cx="19.4" cy="10" rx="2.3" ry="2.8" transform="rotate(18 19.4 10)"/><path d="M12 11.2c-3.4 0-6.6 3.6-6.6 6.5 0 2 1.5 3.1 3.3 3.1 1.4 0 2.2-.7 3.3-.7s1.9.7 3.3.7c1.8 0 3.3-1.1 3.3-3.1 0-2.9-3.2-6.5-6.6-6.5z"/></svg> Food</span>
-        <span class="blue-sub" id="blueSub">Tick to add Blue's food to the list</span>
-      </span>
-    </label>
-    <div class="quick" id="quick" hidden>
-      <div class="quick-head"><span>Quick add</span><button type="button" id="quickEdit">Edit</button></div>
-      <div class="qchips" id="qchips"></div>
-    </div>
-    <div id="list"></div>
-    <div class="foot-actions"><button class="pill danger" id="clearDone" type="button" hidden>Clear items marked bought</button></div>
+
+    <!-- List tab -->
+    <section id="viewList">
+      <div class="updates" id="updates"></div>
+      <label class="blue" id="blueCard" for="blueCheck" hidden>
+        <input type="checkbox" id="blueCheck">
+        <span class="blue-text">
+          <span class="blue-name">Blue's <svg class="paw" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><ellipse cx="4.6" cy="10" rx="2.3" ry="2.8" transform="rotate(-18 4.6 10)"/><ellipse cx="9" cy="5.2" rx="2.4" ry="3" transform="rotate(-6 9 5.2)"/><ellipse cx="15" cy="5.2" rx="2.4" ry="3" transform="rotate(6 15 5.2)"/><ellipse cx="19.4" cy="10" rx="2.3" ry="2.8" transform="rotate(18 19.4 10)"/><path d="M12 11.2c-3.4 0-6.6 3.6-6.6 6.5 0 2 1.5 3.1 3.3 3.1 1.4 0 2.2-.7 3.3-.7s1.9.7 3.3.7c1.8 0 3.3-1.1 3.3-3.1 0-2.9-3.2-6.5-6.6-6.5z"/></svg> Food</span>
+          <span class="blue-sub" id="blueSub">Tick to add Blue's food to the list</span>
+        </span>
+      </label>
+      <div id="quick" hidden>
+        <div class="section-head"><span>Quick add</span><button type="button" id="quickEdit">Edit</button></div>
+        <div class="qchips" id="qchips"></div>
+      </div>
+      <div class="chips" id="chips" role="toolbar" aria-label="Show one store"></div>
+      <div id="list"></div>
+      <div class="foot-actions"><button class="pill danger" id="archiveBtn" type="button" hidden>Clear &amp; archive list</button></div>
+    </section>
+
+    <!-- My pickups (opened from the header) -->
+    <section id="viewPickups" hidden></section>
+
+    <!-- Meals tab -->
+    <section id="viewMeals" hidden>
+      <div class="meals" id="meals"></div>
+    </section>
+
+    <!-- History tab -->
+    <section id="viewHistory" hidden>
+      <div class="hist" id="hist"></div>
+    </section>
   </div>
 </main>
 
 <button class="fab" id="fab" type="button">
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-  Add item
+  <span id="fabLabel">Add item</span>
 </button>
 
+<nav class="tabbar" aria-label="Sections">
+  <div class="in">
+    <button class="tab" type="button" data-tab="list" aria-current="page">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>List
+    </button>
+    <button class="tab" type="button" data-tab="meals">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18a8 8 0 0 1-8 8h-2a8 8 0 0 1-8-8z"/><path d="M9 8c0-1.5 1-2 1-3.5M13 8c0-1.5 1-2 1-3.5"/></svg>Meals
+    </button>
+    <button class="tab" type="button" data-tab="history">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>History
+    </button>
+  </div>
+</nav>
+
 <div class="scrim" id="scrim" hidden></div>
+
 <section class="sheet" id="sheet" hidden aria-modal="true" role="dialog" aria-labelledby="sheetTitle">
   <form class="wrap" id="form" autocomplete="off">
     <h3 id="sheetTitle">Add an item</h3>
     <label>Item<input id="fName" required placeholder="e.g. Paper towels" maxlength="80"></label>
     <div class="two">
-      <label>Brand<input id="fBrand" placeholder="e.g. Bounty (optional)" maxlength="60"></label>
+      <label>Brand<input id="fBrand" placeholder="Optional" maxlength="60"></label>
       <label>Quantity
         <div class="stepper">
           <button type="button" id="qMinus" aria-label="Decrease quantity">−</button>
@@ -245,15 +306,33 @@ body{margin:0}
       </label>
     </div>
     <div>
-      <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px">Store</div>
+      <div class="field-label">Store</div>
       <div class="stores" id="storePick"></div>
     </div>
-    <label>Price each ($)<input id="fPrice" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></label>
-    <p class="hint" id="estHint">Optional. Prices add up to the estimated total.</p>
     <label class="save-row" for="fSave"><input type="checkbox" id="fSave"> Save as a quick-add item for next time</label>
     <div class="sheet-actions">
-      <button type="button" class="btn ghost" id="cancelBtn">Cancel</button>
+      <button type="button" class="btn ghost" data-close>Cancel</button>
       <button type="submit" class="btn primary" id="saveBtn">Add to list</button>
+    </div>
+  </form>
+</section>
+
+<section class="sheet" id="mealSheet" hidden aria-modal="true" role="dialog" aria-labelledby="mealTitle">
+  <form class="wrap" id="mealForm" autocomplete="off">
+    <h3 id="mealTitle">New meal</h3>
+    <label>Meal<input id="mName" required placeholder="e.g. Taco night" maxlength="60"></label>
+    <label>Ingredients
+      <textarea id="mIngr" required placeholder="One per line, for example:&#10;2 avocados&#10;Ground beef&#10;Taco shells&#10;Shredded cheese"></textarea>
+    </label>
+    <p class="hint">Start a line with a number to set how many, like “2 avocados”.</p>
+    <div>
+      <div class="field-label">Usual store</div>
+      <div class="stores" id="mStorePick"></div>
+    </div>
+    <div class="sheet-actions">
+      <button type="button" class="btn ghost" data-close>Cancel</button>
+      <button type="button" class="btn ghost" id="mealSaveOnly">Save for later</button>
+      <button type="submit" class="btn primary" id="mealSubmit">Add to shopping list</button>
     </div>
   </form>
 </section>
@@ -265,7 +344,7 @@ body{margin:0}
     <label>Your name<input id="fWho" required maxlength="30" placeholder="e.g. Dave"></label>
     <button type="button" class="linkbtn" id="reconnect">Change the list passcode on this phone</button>
     <div class="sheet-actions">
-      <button type="button" class="btn ghost" id="nameCancel">Cancel</button>
+      <button type="button" class="btn ghost" data-close>Cancel</button>
       <button type="submit" class="btn primary">Save</button>
     </div>
   </form>
@@ -284,9 +363,10 @@ body{margin:0}
   </form>
 </section>
 
-<div class="toast" id="toast" hidden></div>
+<div class="toast" id="toast" role="status" hidden></div>
 
 <script>
+/* ---------- basics ---------- */
 const STORES = [
   {id:"costco", name:"Costco", c:"--s-costco"},
   {id:"shoprite", name:"ShopRite", c:"--s-shoprite"},
@@ -296,12 +376,17 @@ const STORES = [
   {id:"other", name:"Other", c:"--s-other"},
 ];
 const storeById = Object.fromEntries(STORES.map(s=>[s.id,s]));
+const storeOf = id => storeById[id] || storeById.other;
 const $ = id => document.getElementById(id);
-const money = n => "$" + (Math.round(n*100)/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const plural = (n, w) => `${n} ${w}${n===1?"":"s"}`;
+const norm = s => (s||"").trim().toLowerCase();
 const ls = {
   get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch{return d}},
   set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
 };
+function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function dot(storeId){ const d = el("i","dot"); d.style.setProperty("--c", `var(${storeOf(storeId).c})`); return d; }
 
 // The page address remembers the passcode and your name, so a saved link or
 // home-screen icon opens straight to the list even if the phone clears storage.
@@ -312,19 +397,22 @@ if (urlMe) ls.set("msl.me", urlMe);
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {}
 
 const state = {
-  items: [], mode: "loading", canWrite: true, filter: "all",
-  me: urlMe || ls.get("msl.me",""), editingId: null, pickStore: "costco",
-  confirmDelete: null,
-  updates: [], view: "list", tripDone: null, confirmPartial: false, sending: false,
+  items: [], saved: [], meals: [], updates: [], archive: null,
+  mode: "loading", tab: "list", view: "list", filter: "all",
+  me: urlMe || ls.get("msl.me",""),
+  trip: ls.get("msl.trip", null),
   dismissed: ls.get("msl.dismissed", []),
-  saved: [], quickEditing: false,
+  editingId: null, pickStore: "costco", mealId: null, mealStore: "shoprite",
+  confirm: null, quickEditing: false, tripDone: null, sending: false, openArchive: null, archiveLoading: false,
 };
 
-/* ---------- storage: Google Sheet via Apps Script ---------- */
-// Paste your Apps Script Web app URL here so family members only need the passcode.
+/* ---------- Google Sheet connection ---------- */
+// The family's Apps Script Web app URL. Family members only need the passcode.
 const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbzQHL7pAng_TiIjBEzjOl13bPuL5Ni36zF4sd1S9wNimXo3WUB7-j21kWGtl6sbHlUw/exec";
 
 const conn = { url: SHEET_API_URL || ls.get("msl.api",""), key: urlKey || ls.get("msl.key","") };
+let pending = 0, writeSeq = 0, pollTimer = null;
+
 function syncUrl(){
   try {
     const p = new URLSearchParams(location.search);
@@ -333,12 +421,8 @@ function syncUrl(){
     history.replaceState(null, "", location.pathname + "?" + p.toString() + location.hash);
   } catch {}
 }
-let pending = 0, writeSeq = 0, pollTimer = null;
-
-function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
-
-async function apiGet(){
-  const u = conn.url + (conn.url.includes("?") ? "&" : "?") + "action=all&key=" + encodeURIComponent(conn.key) + "&t=" + Date.now();
+async function apiGet(action){
+  const u = conn.url + (conn.url.includes("?") ? "&" : "?") + "action=" + (action||"all") + "&key=" + encodeURIComponent(conn.key) + "&t=" + Date.now();
   const r = await fetch(u, {redirect:"follow"});
   return check(await r.json());
 }
@@ -355,17 +439,18 @@ function check(j){
   if (!j || !j.ok) { const e = new Error((j && j.error) || "Request failed"); e.code = /passcode/i.test(e.message) ? "bad_key" : "server"; throw e; }
   return j;
 }
-
+function takeData(j){
+  state.items = j.items || []; state.saved = j.saved || []; state.meals = j.meals || []; state.updates = j.updates || [];
+}
 async function refresh(){
   if (!conn.url || !conn.key) return;
   const seq = writeSeq;
   try {
     const j = await apiGet();
     if (pending || seq !== writeSeq) return;     // a newer change is still on its way; keep what's on screen
-    state.items = j.items || []; state.saved = j.saved || []; state.updates = j.updates || [];
-    if (state.mode !== "sheet") { state.mode = "sheet"; banner(""); syncUrl(); }
-    else banner("");
-    render();
+    takeData(j);
+    if (state.mode !== "sheet") { state.mode = "sheet"; syncUrl(); }
+    banner(""); render();
   } catch(e) {
     if (e.code === "bad_key") { openConnect("That passcode didn't work. Check it with Dave."); return; }
     if (state.mode === "loading") { state.mode = "sheet"; render(); }
@@ -399,20 +484,34 @@ $("connectForm").addEventListener("submit", async e=>{
   try {
     const j = await apiGet();
     ls.set("msl.api", url); ls.set("msl.key", key); syncUrl();
-    state.items = j.items||[]; state.saved = j.saved||[]; state.updates = j.updates||[]; state.mode = "sheet";
+    takeData(j); state.mode = "sheet";
     $("connectSheet").hidden = true; $("scrim").hidden = true; banner(""); render(); schedulePoll(15000);
   } catch(err) {
     Object.assign(conn, prev);
-    $("connectErr").textContent = err.code === "bad_key" ? "That passcode didn't work. Check it with Dave." : "Couldn't reach the list. Check the address and your connection.";
+    $("connectErr").textContent = err.code === "bad_key" ? "That passcode didn't work. Check it with Dave." : "Couldn't reach the list. Check your connection and try again.";
     $("connectErr").hidden = false;
   } finally { $("connectBtn").disabled = false; $("connectBtn").textContent = "Open the list"; }
 });
 $("reconnect").onclick = () => { closeSheets(); openConnect(); };
 
-async function addItem(data, id){
-  id = id || newId();
-  state.items.push({id, ...data}); render();
-  await api("addItem", {item: {id, ...data}});
+async function guarded(fn, okMsg){
+  try { await fn(); if (okMsg) toast(okMsg); return true; }
+  catch(e){
+    if (e && e.code === "bad_key") openConnect("The passcode changed. Enter the new one.");
+    else toast("That didn't save. Check your connection and try again.");
+    refresh(); return false;
+  }
+}
+
+/* ---------- data changes (shown right away, then saved to the sheet) ---------- */
+function freshItem(d){
+  return {id: newId(), name: d.name, brand: d.brand||"", qty: d.qty||1, store: d.store||"other", meal: d.meal||"",
+    addedBy: state.me||"", claimedBy: "", done: false, doneBy: "", reported: false, createdAt: Date.now()};
+}
+async function addItems(list){
+  if (!list.length) return;
+  state.items.push(...list); render();
+  await api(list.length === 1 ? "addItem" : "addItems", list.length === 1 ? {item: list[0]} : {items: list});
 }
 async function patchItem(id, patch){
   const it = state.items.find(i=>i.id===id); if (it) Object.assign(it, patch); render();
@@ -422,194 +521,9 @@ async function removeItem(id){
   state.items = state.items.filter(i=>i.id!==id); render();
   await api("deleteItem", {id});
 }
-const savedKey = (name, store) => (name||"").trim().toLowerCase() + "|" + store;
-function findSaved(name, store){ const k = savedKey(name, store); return state.saved.find(q => savedKey(q.name, q.store) === k); }
-async function saveQuick(d){
-  const existing = findSaved(d.name, d.store);
-  const data = {name: d.name, brand: d.brand||"", qty: d.qty||1, store: d.store, price: Number(d.price)||0, savedBy: state.me||""};
-  const id = existing ? existing.id : newId();
-  state.saved = existing ? state.saved.map(q=>q.id===id?{id,...data}:q) : [...state.saved, {id, ...data}]; render();
-  await api("saveQuick", {saved: {id, ...data}});
-}
-async function unsaveQuick(id){
-  state.saved = state.saved.filter(q=>q.id!==id); render();
-  await api("deleteQuick", {id});
-}
-async function guarded(fn, okMsg){
-  try { await fn(); if (okMsg) toast(okMsg); }
-  catch(e){
-    if (e && e.code === "bad_key") openConnect("The passcode changed. Enter the new one.");
-    else toast("That didn't save. Check your connection and try again.");
-    refresh();
-  }
-}
+const onList = name => state.items.some(i => !i.done && norm(i.name) === norm(name));
 
-/* ---------- rendering ---------- */
-const lineTotal = it => (Number(it.price)||0) * (Number(it.qty)||1);
-
-function myPickups(){ return state.me ? state.items.filter(i=>i.claimedBy===state.me && !i.reported) : []; }
-function render(){
-  const mine = myPickups();
-  const left = mine.filter(i=>!i.done).length;
-  $("mineBtn").hidden = !(state.canWrite && state.mode!=="loading" && (mine.length || state.view==="pickups"));
-  $("mineCount").textContent = left;
-  $("mineLabel").textContent = state.view==="pickups" ? "Back to full list" : "My pickups";
-  $("mineCount").hidden = state.view==="pickups";
-  if (state.view === "pickups") { renderPickups(mine); return; }
-  $("chips").hidden = false;
-  renderUpdates();
-  renderQuick();
-  renderBlue();
-  const items = state.items.slice().sort((a,b)=> (a.done?1:0)-(b.done?1:0) || (a.createdAt||0)-(b.createdAt||0));
-  const open = items.filter(i=>!i.done);
-  const scope = state.filter === "all" ? open : open.filter(i=>i.store===state.filter);
-  const total = scope.reduce((s,i)=>s+lineTotal(i),0);
-  const unpriced = scope.filter(i=>!(Number(i.price)>0)).length;
-  const confirmed = scope.filter(i=>i.claimedBy).length;
-
-  $("totalLabel").textContent = state.filter==="all" ? "Estimated total" : "Estimated at " + storeById[state.filter].name;
-  $("totalAmt").textContent = money(total);
-  $("metaLine").textContent = `${scope.length} to buy · ${confirmed} confirmed` + (unpriced ? ` · ${unpriced} unpriced` : "");
-
-  // chips
-  const chips = $("chips"); chips.textContent = "";
-  const mk = (id, label, sub, color) => {
-    const b = document.createElement("button"); b.type="button"; b.className="chip";
-    b.setAttribute("aria-pressed", String(state.filter===id));
-    const t = document.createElement("b");
-    if (color){ const d=document.createElement("i"); d.className="dot"; d.style.setProperty("--c",`var(${color})`); t.append(d); }
-    t.append(label); const s=document.createElement("span"); s.textContent=sub;
-    b.append(t,s); b.onclick=()=>{state.filter=id; render();}; chips.append(b);
-  };
-  mk("all","All stores", money(open.reduce((s,i)=>s+lineTotal(i),0)));
-  STORES.forEach(s=>{
-    const its = open.filter(i=>i.store===s.id);
-    if (its.length || state.filter===s.id) mk(s.id, s.name, `${its.length} · ${money(its.reduce((a,i)=>a+lineTotal(i),0))}`, s.c);
-  });
-
-  // list
-  const list = $("list"); list.textContent = "";
-  const visible = state.filter==="all" ? items : items.filter(i=>i.store===state.filter);
-  if (state.mode === "loading") { list.innerHTML = '<div class="empty"><strong>Loading the list…</strong></div>'; }
-  else if (!visible.length) {
-    const e = document.createElement("div"); e.className="empty";
-    e.innerHTML = "<strong>Nothing on the list yet</strong>Tap <b>Add item</b> to add what you need, pick the store, and set a price to see the estimated total.";
-    list.append(e);
-  } else {
-    const order = state.filter==="all" ? STORES : [storeById[state.filter]];
-    order.forEach(s=>{
-      const its = visible.filter(i=>i.store===s.id || (s.id==="other" && !storeById[i.store]));
-      if (!its.length) return;
-      const g = document.createElement("section"); g.className="group";
-      const h = document.createElement("h2");
-      const d = document.createElement("i"); d.className="dot"; d.style.setProperty("--c",`var(${s.c})`);
-      const sub = document.createElement("span"); sub.className="sub"; sub.textContent = money(its.filter(i=>!i.done).reduce((a,i)=>a+lineTotal(i),0));
-      h.append(d, s.name, sub); g.append(h);
-      const ul = document.createElement("ul");
-      its.forEach(it => ul.append(row(it)));
-      g.append(ul); list.append(g);
-    });
-  }
-  $("clearDone").hidden = !(state.canWrite && items.some(i=>i.done));
-  $("fab").hidden = !state.canWrite || state.mode==="loading";
-  $("whoName").textContent = state.me || "Who are you?";
-}
-
-/* ---------- pickup checklist ---------- */
-function renderPickups(mine){
-  $("quick").hidden = true; $("blueCard").hidden = true;
-  $("chips").hidden = true; $("updates").textContent = ""; $("fab").hidden = true; $("clearDone").hidden = true;
-  $("whoName").textContent = state.me || "Who are you?";
-  const got = mine.filter(i=>i.done);
-  $("totalLabel").textContent = `${state.me}'s pickups`;
-  $("totalAmt").textContent = money(mine.reduce((s,i)=>s+lineTotal(i),0));
-  $("metaLine").textContent = `${got.length} of ${mine.length} picked up`;
-  const list = $("list"); list.textContent = "";
-
-  if (state.tripDone) {
-    const t = state.tripDone;
-    const box = document.createElement("div"); box.className = "success";
-    box.innerHTML = '<div class="big"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--green-ink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>';
-    const h = document.createElement("strong"); h.textContent = t.missed ? `Picked up ${t.count} of ${t.count + t.missed}` : "All items picked up!";
-    const p = document.createElement("div"); p.style.color = "var(--muted)";
-    p.textContent = t.missed ? "The family has been told. The items you couldn't get are back on the list for someone else." : "The family has been told everything is picked up.";
-    const b = document.createElement("button"); b.className = "btn primary"; b.type = "button"; b.textContent = "Back to the list";
-    b.onclick = () => { state.tripDone = null; state.view = "list"; render(); };
-    box.append(h, p, b); list.append(box); return;
-  }
-
-  if (!mine.length) {
-    list.innerHTML = '<div class="empty"><strong>Nothing to pick up yet</strong>On the main list, tap <b>I\'ll pick it up</b> on items you\'re getting. They\'ll show here as a checklist.</div>';
-    return;
-  }
-  const bar = document.createElement("div"); bar.className = "progress";
-  const fill = document.createElement("i"); fill.style.width = (100*got.length/mine.length) + "%"; bar.append(fill);
-  list.append(bar);
-
-  STORES.forEach(s=>{
-    const its = mine.filter(i=>i.store===s.id || (s.id==="other" && !storeById[i.store]));
-    if (!its.length) return;
-    const g = document.createElement("section"); g.className = "group pick";
-    const h = document.createElement("h2");
-    const d = document.createElement("i"); d.className="dot"; d.style.setProperty("--c",`var(${s.c})`);
-    const sub = document.createElement("span"); sub.className="sub"; sub.textContent = `${its.filter(i=>i.done).length}/${its.length}`;
-    h.append(d, s.name, sub); g.append(h);
-    const ul = document.createElement("ul");
-    its.forEach(it=>{
-      const li = document.createElement("li"); if (it.done) li.className = "done";
-      const cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "pk-" + it.id; cb.checked = !!it.done; cb.disabled = state.sending;
-      cb.setAttribute("aria-label", `Picked up ${it.name}`);
-      cb.onchange = () => togglePicked(it, cb.checked, mine);
-      const body = document.createElement("label"); body.className = "body"; body.htmlFor = cb.id; body.style.cursor="pointer";
-      const nm = document.createElement("div"); nm.className = "name";
-      const q = document.createElement("span"); q.className = "qty"; q.textContent = `${it.qty||1}×`;
-      nm.append(q, nameNode(it.name||"Item")); body.append(nm);
-      if (it.brand) { const b = document.createElement("div"); b.className="sub2"; b.textContent = it.brand; body.append(b); }
-      const tag = document.createElement("div");
-      if (Number(it.price)>0) { tag.className="tag"; tag.textContent = money(lineTotal(it)); } else { tag.className="tag none"; tag.textContent="no price"; }
-      li.append(cb, body, tag); ul.append(li);
-    });
-    g.append(ul); list.append(g);
-  });
-
-  if (got.length && got.length < mine.length) {
-    const acts = document.createElement("div"); acts.className = "trip-actions";
-    const b = document.createElement("button"); b.type="button"; b.className="btn ghost";
-    const missedN = mine.length - got.length;
-    b.textContent = state.confirmPartial ? `Tap again: send update and put ${missedN} item${missedN===1?"":"s"} back on the list` : "I couldn't get the rest";
-    b.onclick = () => {
-      if (!state.confirmPartial) { state.confirmPartial = true; render(); setTimeout(()=>{ if(state.confirmPartial){ state.confirmPartial=false; render(); } }, 5000); return; }
-      state.confirmPartial = false; completeTrip(mine);
-    };
-    acts.append(b); list.append(acts);
-  }
-}
-async function togglePicked(it, checked, mine){
-  await guarded(()=>patchItem(it.id, {done: checked, doneBy: checked ? state.me : ""}));
-  const allDone = mine.every(i => i.id === it.id ? checked : i.done);
-  if (checked && allDone) completeTrip(mine.map(i => i.id === it.id ? {...i, done:true} : i));
-}
-async function completeTrip(mine){
-  if (state.sending) return;
-  state.sending = true; render();
-  const got = mine.filter(i=>i.done), missed = mine.filter(i=>!i.done);
-  const stores = [...new Set(got.map(i => (storeById[i.store]||storeById.other).name))];
-  try {
-    const update = {
-      id: newId(), by: state.me, count: got.length, missedCount: missed.length,
-      items: got.map(i=>i.name).slice(0,40), missed: missed.map(i=>i.name).slice(0,40),
-      stores, total: Math.round(got.reduce((s,i)=>s+lineTotal(i),0)*100)/100, at: Date.now(),
-    };
-    await api("completeTrip", {update, gotIds: got.map(i=>i.id), missedIds: missed.map(i=>i.id)});
-    state.updates = [update, ...state.updates];
-    got.forEach(g => { const it = state.items.find(i=>i.id===g.id); if (it) { it.reported = true; it.done = true; } });
-    missed.forEach(m => { const it = state.items.find(i=>i.id===m.id); if (it) it.claimedBy = ""; });
-    state.tripDone = {count: got.length, missed: missed.length};
-  } catch(e) { toast("The update didn't send. Check your connection and try again."); }
-  state.sending = false; render();
-}
-
-/* ---------- Blue's food ---------- */
+/* ---------- names (with Blue's paw) ---------- */
 const PAW_SVG = '<svg class="paw" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><ellipse cx="4.6" cy="10" rx="2.3" ry="2.8" transform="rotate(-18 4.6 10)"/><ellipse cx="9" cy="5.2" rx="2.4" ry="3" transform="rotate(-6 9 5.2)"/><ellipse cx="15" cy="5.2" rx="2.4" ry="3" transform="rotate(6 15 5.2)"/><ellipse cx="19.4" cy="10" rx="2.3" ry="2.8" transform="rotate(18 19.4 10)"/><path d="M12 11.2c-3.4 0-6.6 3.6-6.6 6.5 0 2 1.5 3.1 3.3 3.1 1.4 0 2.2-.7 3.3-.7s1.9.7 3.3.7c1.8 0 3.3-1.1 3.3-3.1 0-2.9-3.2-6.5-6.6-6.5z"/></svg>';
 const isBlue = n => /^blue[’']?s\s+food$/i.test((n||"").trim());
 function nameNode(name){
@@ -619,15 +533,198 @@ function nameNode(name){
   f.append("Blue's", t.content, "Food");
   return f;
 }
+
+/* ---------- top-level rendering ---------- */
+function myPickups(){ return state.me ? state.items.filter(i=>i.claimedBy===state.me && !i.reported) : []; }
+function render(){
+  $("whoName").textContent = state.me || "Who are you?";
+  const inPickups = state.tab === "list" && state.view === "pickups";
+  $("viewList").hidden = !(state.tab === "list" && !inPickups);
+  $("viewPickups").hidden = !inPickups;
+  $("viewMeals").hidden = state.tab !== "meals";
+  $("viewHistory").hidden = state.tab !== "history";
+  document.querySelectorAll(".tab").forEach(t => t.toggleAttribute("aria-current", t.dataset.tab === state.tab));
+
+  const mine = myPickups();
+  $("mineBtn").hidden = !(state.tab === "list" && state.mode !== "loading" && (mine.length || inPickups));
+  $("mineCount").textContent = mine.filter(i=>!i.done).length;
+  $("mineCount").hidden = inPickups;
+  $("mineLabel").textContent = inPickups ? "Back to full list" : "My pickups";
+
+  const fabOn = state.mode !== "loading" && (state.tab === "meals" || (state.tab === "list" && !inPickups));
+  $("fab").hidden = !fabOn;
+  $("fabLabel").textContent = state.tab === "meals" ? "New meal" : "Add item";
+
+  if (state.tab === "meals") renderMeals();
+  else if (state.tab === "history") renderHistory();
+  else if (inPickups) renderPickups(mine);
+  else renderList();
+}
+function setSummary(label, big, meta){ $("sumLabel").textContent = label; $("sumBig").textContent = big; $("metaLine").textContent = meta || ""; }
+
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  const tab = t.dataset.tab;
+  if (tab === state.tab && tab === "list") state.view = "list";
+  state.tab = tab; state.confirm = null;
+  if (tab === "history") loadArchive();
+  render(); window.scrollTo({top:0});
+});
+
+/* ---------- List tab ---------- */
+function renderList(){
+  const items = state.items.slice().sort((a,b)=> (a.done?1:0)-(b.done?1:0) || (a.createdAt||0)-(b.createdAt||0));
+  const open = items.filter(i=>!i.done);
+  const scope = state.filter === "all" ? open : open.filter(i=>i.store===state.filter);
+  const confirmed = scope.filter(i=>i.claimedBy).length, bought = items.filter(i=>i.done).length;
+  setSummary(state.filter==="all" ? "To buy" : "To buy at " + storeOf(state.filter).name, plural(scope.length, "item"),
+    [confirmed ? `${confirmed} confirmed` : "", bought ? `${bought} bought` : ""].filter(Boolean).join(" · "));
+
+  renderUpdates(); renderBlue(); renderQuick();
+
+  // store filter chips (only when the list spans more than one store)
+  const chips = $("chips"); chips.textContent = "";
+  const used = STORES.filter(s => open.some(i=>i.store===s.id));
+  if (state.filter !== "all" && !used.some(s=>s.id===state.filter)) state.filter = "all";
+  chips.hidden = used.length < 2;
+  const mk = (id, label, n) => {
+    const b = el("button","chip"); b.type="button"; b.setAttribute("aria-pressed", String(state.filter===id));
+    if (id !== "all") b.append(dot(id));
+    b.append(label, el("span","n", String(n)));
+    b.onclick = () => { state.filter = id; render(); };
+    chips.append(b);
+  };
+  mk("all", "All", open.length);
+  used.forEach(s => mk(s.id, s.name, open.filter(i=>i.store===s.id).length));
+
+  const list = $("list"); list.textContent = "";
+  const visible = state.filter==="all" ? items : items.filter(i=>i.store===state.filter);
+  if (state.mode === "loading") list.innerHTML = '<div class="empty"><strong>Loading the list…</strong></div>';
+  else if (!visible.length) {
+    const e = el("div","empty");
+    e.innerHTML = "<strong>The list is empty</strong>Tap <b>Add item</b>, tick Blue's food, or add a meal's ingredients from the <b>Meals</b> tab.";
+    list.append(e);
+  } else {
+    STORES.forEach(s=>{
+      const its = visible.filter(i=>i.store===s.id || (s.id==="other" && !storeById[i.store]));
+      if (!its.length) return;
+      const g = el("section","group"), h = el("h2");
+      h.append(dot(s.id), s.name, el("span","sub", String(its.filter(i=>!i.done).length)));
+      const ul = el("ul","card"); its.forEach(it => ul.append(itemRow(it)));
+      g.append(h, ul); list.append(g);
+    });
+  }
+  const ab = $("archiveBtn");
+  ab.hidden = !(state.mode !== "loading" && items.length);
+  ab.textContent = state.confirm === "archive" ? `Tap again to archive all ${plural(items.length,"item")}` : "Clear & archive list";
+}
+
+function itemRow(it){
+  const li = el("li", it.done ? "done" : "");
+  const ck = el("button","check"); ck.type="button";
+  ck.setAttribute("aria-label", it.done ? `Mark ${it.name} as not bought` : `Mark ${it.name} as bought`);
+  ck.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green-ink)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  ck.onclick = () => guarded(()=>patchItem(it.id,{done:!it.done, doneBy: !it.done ? (state.me||"") : ""}));
+
+  const body = el("div","body");
+  const nm = el("div","name"); nm.append(el("span","qty", `${it.qty||1}×`), nameNode(it.name || "Item"));
+  body.append(nm);
+  const bits = [];
+  if (it.brand) bits.push(it.brand);
+  if (it.done && it.doneBy) bits.push(`bought by ${it.doneBy}`);
+  else if (it.addedBy) bits.push(`added by ${it.addedBy}`);
+  if (bits.length) body.append(el("div","sub2", bits.join(" · ")));
+  if (it.meal) body.append(el("span","meal-tag", "for " + it.meal));
+
+  if (!it.done) {
+    const acts = el("div","row-actions");
+    const claim = el("button","pill"); claim.type="button";
+    const mine = it.claimedBy && state.me && it.claimedBy === state.me;
+    if (!it.claimedBy) claim.textContent = "I'll pick it up";
+    else if (mine) { claim.className += " mine"; claim.textContent = "✓ You're getting it"; }
+    else { claim.className += " theirs"; claim.textContent = `✓ ${it.claimedBy} is getting it`; }
+    claim.onclick = () => {
+      if (!state.me) { openName(()=>claim.click()); return; }
+      if (mine) guarded(()=>patchItem(it.id,{claimedBy: ""}));
+      else guarded(()=>patchItem(it.id,{claimedBy: state.me}), `${state.me} is picking up ${it.name}`);
+    };
+    const ed = el("button","pill","Edit"); ed.type="button"; ed.onclick = () => openSheet(it);
+    const key = "del:" + it.id;
+    const del = el("button","pill danger", state.confirm === key ? "Tap again to remove" : "Remove"); del.type="button";
+    del.onclick = () => {
+      if (state.confirm !== key) { askConfirm(key); return; }
+      state.confirm = null; guarded(()=>removeItem(it.id), "Removed");
+    };
+    acts.append(claim, ed, del); body.append(acts);
+  }
+  li.append(ck, body);
+  return li;
+}
+
+let confirmTimer;
+function askConfirm(key){ state.confirm = key; render(); clearTimeout(confirmTimer); confirmTimer = setTimeout(()=>{ if (state.confirm===key){ state.confirm=null; render(); } }, 4500); }
+
+$("archiveBtn").onclick = async () => {
+  if (state.confirm !== "archive") { askConfirm("archive"); return; }
+  state.confirm = null;
+  const ids = state.items.map(i=>i.id), n = ids.length;
+  const archiveId = newId();
+  state.items = []; state.archive = null; render();
+  await guarded(()=>api("archiveList", {archiveId, by: state.me||"", ids}), `Archived ${plural(n,"item")}. Find them under History.`);
+};
+
+/* ---------- status banners: who is at the store, and finished trips ---------- */
+function timeAgo(t){
+  const m = Math.round((Date.now()-t)/60000);
+  if (m < 1) return "just now"; if (m < 60) return `${m} min ago`;
+  const d = new Date(t); return d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}) + (Date.now()-t > 86400000 ? " · " + d.toLocaleDateString("en-US",{month:"short",day:"numeric"}) : "");
+}
+const CART_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 11h10.4L20 8H6.2"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>';
+function renderUpdates(){
+  const box = $("updates"); box.textContent = "";
+  const now = Date.now();
+  const live = state.updates.filter(u => u.type === "shopping" && now - u.at < 4*3600000);
+  const done = state.updates.filter(u => u.type !== "shopping" && u.at && now - u.at < 2*86400000 && !state.dismissed.includes(u.id)).slice(0,3);
+  live.forEach(u=>{
+    const card = el("div","update live"); card.setAttribute("role","status");
+    const ic = el("div","ic"); ic.innerHTML = CART_SVG;
+    const body = el("div"); body.style.minWidth = "0";
+    const me = u.by && u.by === state.me;
+    body.append(el("div","line", me ? "You're at the store" : `${u.by||"Someone"} is at the store`));
+    const bits = [`${u.got||0} of ${u.count||0} picked up`];
+    if (u.stores && u.stores.length) bits.push(u.stores.join(", "));
+    body.append(el("div","sub2", bits.join(" · ")));
+    const bar = el("div","progress"), fill = el("i"); fill.style.width = (u.count ? 100*(u.got||0)/u.count : 0) + "%"; bar.append(fill);
+    body.append(bar, el("div","when", "updated " + timeAgo(u.at)));
+    card.append(ic, body, el("span")); box.append(card);
+  });
+  done.forEach(u=>{
+    const card = el("div","update" + (u.missedCount ? " partial" : "")); card.setAttribute("role","status");
+    const ic = el("div","ic", u.missedCount ? "◐" : "✓");
+    const body = el("div"); body.style.minWidth = "0";
+    const n = u.count||0;
+    body.append(el("div","line", u.missedCount
+      ? `${u.by||"Someone"} picked up ${n} of ${n+u.missedCount} items`
+      : `${u.by||"Someone"} picked up all ${plural(n,"item")}`));
+    const bits = [];
+    if (u.stores && u.stores.length) bits.push(u.stores.join(", "));
+    if (u.missed && u.missed.length) bits.push("couldn't get: " + u.missed.join(", "));
+    if (bits.length) body.append(el("div","sub2", bits.join(" · ")));
+    body.append(el("div","when", timeAgo(u.at)));
+    const x = el("button","x","×"); x.type="button"; x.setAttribute("aria-label","Dismiss update");
+    x.onclick = () => { state.dismissed = [...state.dismissed, u.id].slice(-50); ls.set("msl.dismissed", state.dismissed); render(); };
+    card.append(ic, body, x); box.append(card);
+  });
+}
+
+/* ---------- Blue's food ---------- */
 function renderBlue(){
   const card = $("blueCard");
-  card.hidden = !(state.canWrite && state.mode !== "loading");
+  card.hidden = state.mode === "loading";
   const it = state.items.find(i => !i.done && isBlue(i.name));
   $("blueCheck").checked = !!it;
   card.classList.toggle("on", !!it);
   if (it) {
-    const bits = ["On the list", (storeById[it.store]||storeById.other).name];
-    if (Number(it.price) > 0) bits.push(money(lineTotal(it)));
+    const bits = ["On the list", storeOf(it.store).name];
     if (it.claimedBy) bits.push(`${it.claimedBy} is getting it`);
     $("blueSub").textContent = bits.join(" · ");
   } else $("blueSub").textContent = "Tick to add Blue's food to the list";
@@ -637,8 +734,7 @@ async function toggleBlue(on){
     if (!state.me) { $("blueCheck").checked = false; openName(() => toggleBlue(true)); return; }
     if (state.items.some(i => !i.done && isBlue(i.name))) return;
     const q = state.saved.find(x => isBlue(x.name)) || {};
-    await guarded(() => addItem({name: "Blue's Food", brand: q.brand||"", qty: q.qty||1, store: q.store||"other", price: Number(q.price)||0,
-      addedBy: state.me, claimedBy: "", done: false, doneBy: "", reported: false, createdAt: Date.now()}), "Added Blue's food");
+    await guarded(() => addItems([freshItem({name: "Blue's Food", brand: q.brand, qty: q.qty, store: q.store||"other"})]), "Added Blue's food");
   } else {
     const its = state.items.filter(i => !i.done && isBlue(i.name));
     for (const i of its) await guarded(() => removeItem(i.id));
@@ -647,203 +743,372 @@ async function toggleBlue(on){
 }
 $("blueCheck").onchange = e => toggleBlue(e.target.checked);
 
-/* ---------- quick add ---------- */
+/* ---------- Quick add ---------- */
+const savedKey = (name, store) => norm(name) + "|" + store;
+function findSaved(name, store){ const k = savedKey(name, store); return state.saved.find(q => savedKey(q.name, q.store) === k); }
+async function saveQuick(d){
+  const existing = findSaved(d.name, d.store);
+  const data = {id: existing ? existing.id : newId(), name: d.name, brand: d.brand||"", qty: d.qty||1, store: d.store, savedBy: state.me||""};
+  state.saved = existing ? state.saved.map(q=>q.id===data.id?data:q) : [...state.saved, data]; render();
+  await api("saveQuick", {saved: data});
+}
 function renderQuick(){
-  const box = $("quick"), wrap = $("qchips");
-  const list = state.saved.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""));
-  box.hidden = !(state.canWrite && list.length);
+  const list = state.saved.filter(q => !isBlue(q.name)).sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+  $("quick").hidden = !list.length;
   if (!list.length) state.quickEditing = false;
   $("quickEdit").textContent = state.quickEditing ? "Done" : "Edit";
-  wrap.textContent = "";
+  const wrap = $("qchips"); wrap.textContent = "";
   list.forEach(q=>{
-    const b = document.createElement("button"); b.type = "button"; b.className = "qchip" + (state.quickEditing ? " editing" : "");
-    const plus = document.createElement("span"); plus.className = "plus"; plus.textContent = state.quickEditing ? "×" : "+";
-    const d = document.createElement("i"); d.className = "dot"; d.style.setProperty("--c", `var(${(storeById[q.store]||storeById.other).c})`);
-    b.append(plus, nameNode(q.name), d);
-    b.title = [q.brand, (storeById[q.store]||storeById.other).name, Number(q.price)>0 ? money(q.price) : ""].filter(Boolean).join(" · ");
+    const b = el("button","qchip" + (state.quickEditing ? " editing" : "")); b.type = "button";
+    b.append(el("span","plus", state.quickEditing ? "×" : "+"), nameNode(q.name), dot(q.store));
+    b.title = [q.brand, storeOf(q.store).name].filter(Boolean).join(" · ");
     b.setAttribute("aria-label", state.quickEditing ? `Remove ${q.name} from Quick add` : `Add ${q.name} to the list`);
-    b.onclick = () => state.quickEditing ? guarded(()=>unsaveQuick(q.id), `Removed ${q.name} from Quick add`) : quickAdd(q);
+    b.onclick = () => {
+      if (state.quickEditing) {
+        state.saved = state.saved.filter(x=>x.id!==q.id); render();
+        guarded(()=>api("deleteQuick", {id:q.id}), `Removed ${q.name} from Quick add`);
+      } else quickAdd(q);
+    };
     wrap.append(b);
   });
 }
 function quickAdd(q){
-  const already = state.items.find(i => !i.done && savedKey(i.name, i.store) === savedKey(q.name, q.store));
-  if (already) { toast(`${q.name} is already on the list`); return; }
+  if (state.items.some(i => !i.done && savedKey(i.name, i.store) === savedKey(q.name, q.store))) { toast(`${q.name} is already on the list`); return; }
   if (!state.me) { openName(()=>quickAdd(q)); return; }
-  const price = Number(q.price)||0;
-  const id = newId();
-  const data = {name: q.name, brand: q.brand||"", qty: q.qty||1, store: q.store, price,
-    addedBy: state.me, claimedBy: "", done: false, doneBy: "", reported: false, createdAt: Date.now()};
-  guarded(()=>addItem(data, id), `Added ${q.name}`);
+  guarded(()=>addItems([freshItem(q)]), `Added ${q.name}`);
 }
 $("quickEdit").onclick = () => { state.quickEditing = !state.quickEditing; render(); };
 
-/* ---------- status updates for the family ---------- */
-function timeAgo(t){
-  const m = Math.round((Date.now()-t)/60000);
-  if (m < 1) return "just now"; if (m < 60) return `${m} min ago`;
-  const d = new Date(t); return d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}) + (Date.now()-t > 86400000 ? " · " + d.toLocaleDateString("en-US",{month:"short",day:"numeric"}) : "");
-}
-function renderUpdates(){
-  const box = $("updates"); box.textContent = "";
-  const recent = state.updates.filter(u => u.at && Date.now()-u.at < 2*86400000 && !state.dismissed.includes(u.id)).slice(0,3);
-  recent.forEach(u=>{
-    const el = document.createElement("div"); el.className = "update" + (u.missedCount ? " partial" : "");
-    el.setAttribute("role","status");
-    const ic = document.createElement("div"); ic.textContent = u.missedCount ? "◐" : "✓"; ic.style.cssText = "font-weight:700;color:var(--green)";
-    const body = document.createElement("div"); body.style.minWidth = "0";
-    const line = document.createElement("div"); line.style.fontWeight = "600";
-    const n = u.count||0;
-    line.textContent = u.missedCount
-      ? `${u.by||"Someone"} picked up ${n} of ${n+u.missedCount} items`
-      : `${u.by||"Someone"} picked up all ${n} item${n===1?"":"s"}`;
-    const det = document.createElement("div"); det.className = "sub2";
-    const bits = [];
-    if (u.stores && u.stores.length) bits.push(u.stores.join(", "));
-    if (u.total > 0) bits.push("est. " + money(u.total));
-    if (u.missed && u.missed.length) bits.push("couldn't get: " + u.missed.join(", "));
-    det.textContent = bits.join(" · ");
-    const when = document.createElement("div"); when.className = "when"; when.textContent = timeAgo(u.at);
-    body.append(line); if (bits.length) body.append(det); body.append(when);
-    const x = document.createElement("button"); x.type="button"; x.className="x"; x.setAttribute("aria-label","Dismiss update"); x.textContent = "×";
-    x.onclick = () => { state.dismissed = [...state.dismissed, u.id].slice(-50); ls.set("msl.dismissed", state.dismissed); render(); };
-    el.append(ic, body, x); box.append(el);
-  });
-}
+/* ---------- My pickups ---------- */
 $("mineBtn").onclick = () => {
-  state.view = state.view === "pickups" ? "list" : "pickups"; state.tripDone = null; state.confirmPartial = false;
+  state.view = state.view === "pickups" ? "list" : "pickups"; state.tripDone = null; state.confirm = null;
   render(); window.scrollTo({top:0});
 };
+function myTripUpdate(){ return state.trip && state.updates.find(u => u.id === state.trip && u.type === "shopping"); }
+function storesOf(list){ return [...new Set(list.map(i => storeOf(i.store).name))]; }
+function tripRecord(mine, extra){
+  return {id: state.trip, type: "shopping", by: state.me, count: mine.length, got: mine.filter(i=>i.done).length,
+    stores: storesOf(mine), items: [], missed: [], missedCount: 0, total: 0, at: Date.now(), ...extra};
+}
+function putUpdate(u){
+  state.updates = [u, ...state.updates.filter(x => x.id !== u.id)];
+}
+async function startTrip(mine){
+  if (!state.trip) { state.trip = newId(); ls.set("msl.trip", state.trip); }
+  const u = tripRecord(mine);
+  putUpdate(u); render();
+  await guarded(()=>api("saveUpdate", {update: u}), "The family can see you're at the store");
+}
+async function tripProgress(mine){
+  if (!state.trip) return startTrip(mine);
+  const u = tripRecord(mine); putUpdate(u);
+  await guarded(()=>api("saveUpdate", {update: u}));
+}
+function renderPickups(mine){
+  const got = mine.filter(i=>i.done);
+  setSummary(`${state.me}'s pickups`, `${got.length} of ${mine.length}`, "picked up");
+  const box = $("viewPickups"); box.textContent = "";
 
-function row(it){
-  const li = document.createElement("li"); if (it.done) li.className = "done";
-  const ck = document.createElement("button"); ck.type="button"; ck.className="check";
-  ck.setAttribute("aria-label", it.done ? `Mark ${it.name} as not bought` : `Mark ${it.name} as bought`);
-  ck.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green-ink)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
-  ck.disabled = !state.canWrite;
-  ck.onclick = () => guarded(()=>patchItem(it.id,{done:!it.done, doneBy: !it.done ? (state.me||"") : ""}));
-
-  const body = document.createElement("div"); body.className="body";
-  const nm = document.createElement("div"); nm.className="name";
-  const q = document.createElement("span"); q.className="qty"; q.textContent = `${it.qty||1}×`;
-  nm.append(q, nameNode(it.name || "Item"));
-  const sub = document.createElement("div"); sub.className="sub2";
-  const bits = [];
-  if (it.brand) bits.push(it.brand);
-  if (it.addedBy) bits.push(`added by ${it.addedBy}`);
-  if (it.done && it.doneBy) bits.push(`bought by ${it.doneBy}`);
-  sub.textContent = bits.join(" · ");
-  body.append(nm); if (bits.length) body.append(sub);
-
-  if (state.canWrite && !it.done) {
-    const acts = document.createElement("div"); acts.className="row-actions";
-    const claim = document.createElement("button"); claim.type="button"; claim.className="pill";
-    const mine = it.claimedBy && state.me && it.claimedBy === state.me;
-    if (!it.claimedBy) { claim.textContent = "I'll pick it up"; }
-    else if (mine) { claim.className += " mine"; claim.textContent = "✓ You're getting it"; }
-    else { claim.className += " theirs"; claim.textContent = `✓ ${it.claimedBy} is getting it`; }
-    claim.onclick = () => {
-      if (!state.me) { openName(()=>claim.click()); return; }
-      if (!it.claimedBy || !mine && it.claimedBy) {
-        guarded(()=>patchItem(it.id,{claimedBy: state.me}), `Confirmed: ${state.me} is getting ${it.name}`);
-      } else guarded(()=>patchItem(it.id,{claimedBy: ""}));
-    };
-    const ed = document.createElement("button"); ed.type="button"; ed.className="pill"; ed.textContent="Edit";
-    ed.onclick = () => openSheet(it);
-    const del = document.createElement("button"); del.type="button"; del.className="pill danger";
-    if (state.confirmDelete === it.id) {
-      del.textContent = "Tap again to remove";
-      del.onclick = () => { state.confirmDelete=null; guarded(()=>removeItem(it.id), "Removed"); };
-    } else {
-      del.textContent = "Remove";
-      del.onclick = () => { state.confirmDelete = it.id; render(); setTimeout(()=>{ if(state.confirmDelete===it.id){state.confirmDelete=null;render();} }, 4000); };
-    }
-    const isSaved = !!findSaved(it.name, it.store);
-    const sv = document.createElement("button"); sv.type="button"; sv.className="pill"; sv.textContent = isSaved ? "★ Saved" : "☆ Save";
-    sv.setAttribute("aria-label", isSaved ? `${it.name} is a saved quick-add item` : `Save ${it.name} as a quick-add item`);
-    sv.disabled = isSaved;
-    sv.onclick = () => guarded(()=>saveQuick(it), `Saved ${it.name} to Quick add`);
-    acts.append(claim, ed, sv, del); body.append(acts);
+  if (state.tripDone) {
+    const t = state.tripDone;
+    const s = el("div","success");
+    s.innerHTML = '<div class="big"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--green-ink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>';
+    s.append(el("strong", null, t.missed ? `Picked up ${t.count} of ${t.count + t.missed}` : "All items picked up!"));
+    const p = el("div", null, t.missed ? "The family can see what you got. The items you couldn't get are back on the list for someone else." : "The family can see everything is picked up.");
+    p.style.color = "var(--muted)";
+    const b = el("button","btn primary","Back to the list"); b.type = "button";
+    b.onclick = () => { state.tripDone = null; state.view = "list"; render(); };
+    s.append(p, b); box.append(s); return;
+  }
+  if (!mine.length) {
+    const e = el("div","empty");
+    e.innerHTML = "<strong>Nothing to pick up yet</strong>On the list, tap <b>I'll pick it up</b> on items you're getting. They show here as a checklist.";
+    box.append(e); return;
   }
 
-  const tag = document.createElement("div");
-  const p = Number(it.price)||0;
-  if (p > 0) {
-    tag.className = "tag"; tag.textContent = money(lineTotal(it));
-    const notes = [];
-    if ((Number(it.qty)||1) > 1) notes.push(money(p)+" ea");
-    if (notes.length) { const sm=document.createElement("small"); sm.textContent = notes.join(" · "); tag.append(sm); }
-  } else { tag.className = "tag none"; tag.textContent = "no price"; }
+  if (!myTripUpdate() && !got.length) {
+    const t = el("div","trip-start");
+    const b = el("button","btn primary wide","I'm at the store"); b.type = "button";
+    b.onclick = () => startTrip(mine);
+    t.append(b, el("p", null, "Lets the family know you're shopping, and shows them each item as you pick it up."));
+    box.append(t);
+  } else {
+    const t = el("div","trip-on"); t.append(el("span","pulse"), "The family can see you're at the store and how many items you've picked up.");
+    box.append(t);
+  }
 
-  li.append(ck, body, tag);
-  return li;
+  const bar = el("div","progress"), fill = el("i"); fill.style.width = (100*got.length/mine.length) + "%"; bar.append(fill);
+  bar.style.marginTop = "14px"; box.append(bar);
+
+  STORES.forEach(s=>{
+    const its = mine.filter(i=>i.store===s.id || (s.id==="other" && !storeById[i.store]));
+    if (!its.length) return;
+    const g = el("section","group"), h = el("h2");
+    h.append(dot(s.id), s.name, el("span","sub", `${its.filter(i=>i.done).length}/${its.length}`));
+    const ul = el("ul","card pick");
+    its.forEach(it=>{
+      const li = el("li", it.done ? "done" : "");
+      const cb = el("input"); cb.type = "checkbox"; cb.id = "pk-" + it.id; cb.checked = !!it.done; cb.disabled = state.sending;
+      cb.setAttribute("aria-label", `Picked up ${it.name}`);
+      cb.onchange = () => togglePicked(it, cb.checked, mine);
+      const body = el("label","body"); body.htmlFor = cb.id;
+      const nm = el("div","name"); nm.append(el("span","qty", `${it.qty||1}×`), nameNode(it.name||"Item")); body.append(nm);
+      const sub = [it.brand, it.meal ? "for " + it.meal : ""].filter(Boolean).join(" · ");
+      if (sub) body.append(el("div","sub2", sub));
+      li.append(cb, body); ul.append(li);
+    });
+    g.append(h, ul); box.append(g);
+  });
+
+  if (got.length && got.length < mine.length) {
+    const acts = el("div","trip-actions");
+    const missedN = mine.length - got.length;
+    const b = el("button","btn ghost", state.confirm === "partial" ? `Tap again: finish and put ${plural(missedN,"item")} back on the list` : "I couldn't get the rest"); b.type = "button";
+    b.onclick = () => {
+      if (state.confirm !== "partial") { askConfirm("partial"); return; }
+      state.confirm = null; completeTrip(mine);
+    };
+    acts.append(b); box.append(acts);
+  }
+}
+async function togglePicked(it, checked, mine){
+  const ok = await guarded(()=>patchItem(it.id, {done: checked, doneBy: checked ? state.me : ""}));
+  if (!ok) return;
+  const now = mine.map(i => i.id === it.id ? {...i, done: checked} : i);
+  if (checked && now.every(i => i.done)) completeTrip(now);
+  else tripProgress(now);
+}
+async function completeTrip(mine){
+  if (state.sending) return;
+  state.sending = true; render();
+  const got = mine.filter(i=>i.done), missed = mine.filter(i=>!i.done);
+  const update = {
+    id: state.trip || newId(), type: "done", by: state.me, count: got.length, got: got.length, missedCount: missed.length,
+    items: got.map(i=>i.name).slice(0,40), missed: missed.map(i=>i.name).slice(0,40),
+    stores: storesOf(got), total: 0, at: Date.now(),
+  };
+  try {
+    await api("completeTrip", {update, gotIds: got.map(i=>i.id), missedIds: missed.map(i=>i.id)});
+    putUpdate(update);
+    got.forEach(g => { const it = state.items.find(i=>i.id===g.id); if (it) { it.reported = true; it.done = true; } });
+    missed.forEach(m => { const it = state.items.find(i=>i.id===m.id); if (it) it.claimedBy = ""; });
+    state.trip = null; ls.set("msl.trip", null);
+    state.tripDone = {count: got.length, missed: missed.length};
+  } catch(e) { toast("The update didn't send. Check your connection and try again."); }
+  state.sending = false; render();
 }
 
-/* ---------- add / edit sheet ---------- */
-function renderStorePick(){
-  const box = $("storePick"); box.textContent="";
-  STORES.forEach(s=>{
-    const b=document.createElement("button"); b.type="button"; b.setAttribute("aria-pressed", String(state.pickStore===s.id));
-    const d=document.createElement("i"); d.className="dot"; d.style.setProperty("--c",`var(${s.c})`);
-    b.append(d, s.name); b.onclick=()=>{ if (state.pickStore!==s.id){ state.pickStore=s.id; renderStorePick(); } }; box.append(b);
+/* ---------- Meals tab ---------- */
+const UNIT = /^(lb|lbs|pound|pounds|oz|ounce|ounces|g|gram|grams|kg|ml|l|liter|liters|cup|cups|tbsp|tsp|tablespoons?|teaspoons?|pinch|dash|clove|cloves|slice|slices|quart|quarts|pint|pints|gallon|gallons)\b/i;
+function parseIngredients(text){
+  const out = [], seen = new Set();
+  (text||"").split(/\n|,(?![^(]*\))/).forEach(raw=>{
+    let line = raw.replace(/^[\s\-*•·]+/, "").trim();
+    if (!line) return;
+    let qty = 1;
+    const m = line.match(/^(\d{1,3})\s*(?:x\s+)?(.+)$/i);
+    if (m && !UNIT.test(m[2])) { qty = Math.max(1, parseInt(m[1])); line = m[2].trim(); }
+    line = line.slice(0,80);
+    if (seen.has(norm(line))) return; seen.add(norm(line));
+    out.push({name: line, qty});
+  });
+  return out;
+}
+function mealIngredients(meal){ return parseIngredients(meal.ingredients); }
+function renderMeals(){
+  setSummary("Meals", plural(state.meals.length, "meal"), "Add a meal's ingredients to the list in one tap");
+  const box = $("meals"); box.textContent = "";
+  if (state.mode === "loading") { box.innerHTML = '<div class="empty"><strong>Loading meals…</strong></div>'; return; }
+  if (!state.meals.length) {
+    const e = el("div","empty");
+    e.innerHTML = "<strong>Plan a meal</strong>Tap <b>New meal</b>, type the ingredients, and they go straight onto the shopping list. Meals are saved here for next time.";
+    box.append(e); return;
+  }
+  state.meals.slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).forEach(m=>{
+    const ings = mealIngredients(m);
+    const have = ings.filter(i => onList(i.name)).length;
+    const card = el("article","meal");
+    card.append(el("h3", null, m.name || "Meal"));
+    card.append(el("div","ingr", ings.map(i => (i.qty>1 ? i.qty + " " : "") + i.name).join(", ")));
+    const sub = el("div","sub2"); sub.append(dot(m.store), storeOf(m.store).name, " · ", plural(ings.length,"ingredient"));
+    if (have) sub.append(" · ", `${have} on the list`);
+    card.append(sub);
+    const acts = el("div","row-actions");
+    const add = el("button","pill go", have >= ings.length ? "All on the list" : have ? `Add the other ${ings.length - have}` : "Add to list"); add.type = "button";
+    add.disabled = have >= ings.length;
+    add.onclick = () => addMealToList(m);
+    const ed = el("button","pill","Edit"); ed.type = "button"; ed.onclick = () => openMeal(m);
+    const key = "meal:" + m.id;
+    const del = el("button","pill danger", state.confirm === key ? "Tap again to delete" : "Delete"); del.type = "button";
+    del.onclick = () => {
+      if (state.confirm !== key) { askConfirm(key); return; }
+      state.confirm = null; state.meals = state.meals.filter(x=>x.id!==m.id); render();
+      guarded(()=>api("deleteMeal", {id: m.id}), `Deleted ${m.name}`);
+    };
+    acts.append(add, ed, del); card.append(acts);
+    box.append(card);
   });
 }
+async function addMealToList(m){
+  if (!state.me) { openName(()=>addMealToList(m)); return; }
+  const ings = mealIngredients(m);
+  const fresh = ings.filter(i => !onList(i.name)).map(i => freshItem({name: i.name, qty: i.qty, store: m.store, meal: m.name}));
+  const skipped = ings.length - fresh.length;
+  if (!fresh.length) { toast(`Everything for ${m.name} is already on the list`); return; }
+  await guarded(()=>addItems(fresh), `Added ${plural(fresh.length,"ingredient")} for ${m.name}` + (skipped ? ` (${skipped} already on the list)` : ""));
+}
+function renderStoreButtons(boxId, current, onPick){
+  const box = $(boxId); box.textContent = "";
+  STORES.forEach(s=>{
+    const b = el("button"); b.type = "button"; b.setAttribute("aria-pressed", String(current===s.id));
+    b.append(dot(s.id), s.name); b.onclick = () => onPick(s.id); box.append(b);
+  });
+}
+function openMeal(m){
+  state.mealId = m ? m.id : null;
+  state.mealStore = m ? m.store : ls.get("msl.mealStore", "shoprite");
+  $("mealTitle").textContent = m ? "Edit meal" : "New meal";
+  $("mName").value = m ? m.name : ""; $("mIngr").value = m ? m.ingredients : "";
+  const drawStores = () => renderStoreButtons("mStorePick", state.mealStore, id => { state.mealStore = id; drawStores(); });
+  drawStores();
+  $("scrim").hidden = false; $("mealSheet").hidden = false; setTimeout(()=>$("mName").focus(), 50);
+}
+async function saveMeal(andAdd){
+  const name = $("mName").value.trim(), ingredients = $("mIngr").value.trim();
+  if (!name) { $("mName").focus(); return; }
+  if (!parseIngredients(ingredients).length) { $("mIngr").focus(); toast("Add at least one ingredient"); return; }
+  if (andAdd && !state.me) { closeSheets(); openName(()=>{ openMeal(state.mealId ? state.meals.find(x=>x.id===state.mealId) : null); $("mName").value = name; $("mIngr").value = ingredients; }); return; }
+  const meal = {id: state.mealId || newId(), name, ingredients, store: state.mealStore, createdBy: state.me||"", updatedAt: Date.now()};
+  ls.set("msl.mealStore", state.mealStore);
+  state.meals = [...state.meals.filter(x=>x.id!==meal.id), meal];
+  closeSheets(); render();
+  const ok = await guarded(()=>api("saveMeal", {meal}), andAdd ? null : `Saved ${name}`);
+  if (ok && andAdd) { await addMealToList(meal); state.tab = "list"; state.view = "list"; render(); window.scrollTo({top:0}); }
+}
+$("mealForm").addEventListener("submit", e => { e.preventDefault(); saveMeal(true); });
+$("mealSaveOnly").onclick = () => saveMeal(false);
+
+/* ---------- History tab ---------- */
+async function loadArchive(){
+  if (state.archiveLoading) return;
+  state.archiveLoading = true; render();
+  try { const j = await apiGet("archive"); state.archive = j.archive || []; }
+  catch(e) { if (!state.archive) state.archive = "error"; }
+  state.archiveLoading = false; render();
+}
+function fmtDate(t){
+  const d = new Date(t);
+  return d.toLocaleDateString("en-US",{weekday:"short", month:"short", day:"numeric"}) + " · " + d.toLocaleTimeString("en-US",{hour:"numeric", minute:"2-digit"});
+}
+function renderHistory(){
+  const box = $("hist"); box.textContent = "";
+  const rows = Array.isArray(state.archive) ? state.archive : [];
+  const groups = {};
+  rows.forEach(r => { (groups[r.archiveId] = groups[r.archiveId] || {id:r.archiveId, at:r.archivedAt, by:r.archivedBy, items:[]}).items.push(r); });
+  const lists = Object.values(groups).sort((a,b)=>b.at-a.at);
+  setSummary("History", plural(lists.length, "past list"), "Lists you've cleared and archived");
+  if (state.archive === null || (state.archiveLoading && !rows.length)) { box.innerHTML = '<div class="empty"><strong>Loading past lists…</strong></div>'; return; }
+  if (state.archive === "error") { box.innerHTML = '<div class="empty"><strong>Couldn\'t load past lists</strong>Check your connection, then tap History again.</div>'; return; }
+  if (!lists.length) {
+    const e = el("div","empty");
+    e.innerHTML = "<strong>No past lists yet</strong>When you're done shopping, tap <b>Clear &amp; archive list</b> at the bottom of the list. It's saved here so you can look back or reuse it.";
+    box.append(e); return;
+  }
+  lists.forEach(g=>{
+    const open = state.openArchive === g.id;
+    const card = el("article","arch" + (open ? " open" : ""));
+    const head = el("button","arch-head"); head.type = "button"; head.setAttribute("aria-expanded", String(open));
+    const bought = g.items.filter(i=>i.done).length;
+    head.append(el("strong", null, fmtDate(g.at)));
+    const chev = el("span","chev"); chev.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+    head.append(chev);
+    head.append(el("span","sub2", `${plural(g.items.length,"item")} · ${bought} bought` + (g.by ? ` · cleared by ${g.by}` : "")));
+    head.onclick = () => { state.openArchive = open ? null : g.id; render(); };
+    card.append(head);
+    if (open) {
+      const ul = el("ul","arch-items");
+      g.items.forEach(it=>{
+        const li = el("li", it.done ? "" : "missed");
+        li.append(el("span","mark", it.done ? "✓" : "–"));
+        const nm = el("span","nm"); nm.append(`${it.qty||1}× `, nameNode(it.name));
+        const sub = [storeOf(it.store).name, it.brand, it.meal ? "for " + it.meal : "", it.done ? (it.doneBy ? "bought by " + it.doneBy : "bought") : "not bought"].filter(Boolean).join(" · ");
+        const wrap = el("span"); wrap.append(nm, el("div","sub2", sub));
+        li.append(wrap); ul.append(li);
+      });
+      card.append(ul);
+      const acts = el("div","arch-actions");
+      const missed = g.items.filter(i=>!i.done);
+      if (missed.length && missed.length < g.items.length) {
+        const b1 = el("button","pill go", `Add the ${missed.length} not bought`); b1.type = "button";
+        b1.onclick = () => restore(missed); acts.append(b1);
+      }
+      const b2 = el("button","pill" + (missed.length && missed.length < g.items.length ? "" : " go"), "Add all to the list"); b2.type = "button";
+      b2.onclick = () => restore(g.items); acts.append(b2);
+      card.append(acts);
+    }
+    box.append(card);
+  });
+}
+async function restore(list){
+  if (!state.me) { openName(()=>restore(list)); return; }
+  const seen = new Set();
+  const fresh = list.filter(i => { const k = norm(i.name); if (onList(i.name) || seen.has(k)) return false; seen.add(k); return true; })
+    .map(i => freshItem(i));
+  if (!fresh.length) { toast("Those items are already on the list"); return; }
+  const ok = await guarded(()=>addItems(fresh), `Added ${plural(fresh.length,"item")} to the list`);
+  if (ok) { state.tab = "list"; state.view = "list"; render(); window.scrollTo({top:0}); }
+}
+
+/* ---------- add / edit item ---------- */
 function openSheet(it){
   state.editingId = it ? it.id : null;
   $("sheetTitle").textContent = it ? "Edit item" : "Add an item";
   $("saveBtn").textContent = it ? "Save changes" : "Add to list";
   $("fName").value = it?.name || ""; $("fBrand").value = it?.brand || "";
-  $("fQty").value = it?.qty || 1; $("fPrice").value = it && Number(it.price)>0 ? it.price : "";
+  $("fQty").value = it?.qty || 1; $("fSave").checked = !!(it && findSaved(it.name, it.store));
   state.pickStore = it?.store || (state.filter!=="all" ? state.filter : ls.get("msl.lastStore","costco"));
-  $("fSave").checked = false;
-  renderStorePick();
-  $("scrim").hidden=false; $("sheet").hidden=false; setTimeout(()=>$("fName").focus(),50);
+  const draw = () => renderStoreButtons("storePick", state.pickStore, id => { state.pickStore = id; draw(); });
+  draw();
+  $("scrim").hidden = false; $("sheet").hidden = false; setTimeout(()=>$("fName").focus(), 50);
 }
-function closeSheets(){ if (!$("connectSheet").hidden) return; $("scrim").hidden=true; $("sheet").hidden=true; $("nameSheet").hidden=true; }
-$("fab").onclick = () => state.me ? openSheet() : openName(()=>openSheet());
-$("cancelBtn").onclick = closeSheets; $("scrim").onclick = closeSheets;
-document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeSheets(); });
+$("fab").onclick = () => {
+  if (!state.me) { openName(()=>$("fab").click()); return; }
+  if (state.tab === "meals") openMeal(); else openSheet();
+};
 $("qMinus").onclick = () => { $("fQty").value = Math.max(1, (parseInt($("fQty").value)||1)-1); };
 $("qPlus").onclick = () => { $("fQty").value = Math.min(999, (parseInt($("fQty").value)||1)+1); };
-
 $("form").addEventListener("submit", e=>{
   e.preventDefault();
   const name = $("fName").value.trim(); if (!name) return;
-  const data = {
-    name, brand: $("fBrand").value.trim(),
-    qty: Math.max(1, Math.min(999, parseInt($("fQty").value)||1)),
-    store: state.pickStore,
-    price: Math.max(0, Math.round((parseFloat($("fPrice").value)||0)*100)/100),
-  };
+  const data = { name, brand: $("fBrand").value.trim(), qty: Math.max(1, Math.min(999, parseInt($("fQty").value)||1)), store: state.pickStore };
   if ($("fSave").checked) guarded(()=>saveQuick(data));
   ls.set("msl.lastStore", state.pickStore);
   const id = state.editingId;
   closeSheets();
   if (id) guarded(()=>patchItem(id, data), "Saved");
-  else guarded(()=>addItem({...data, addedBy: state.me||"", claimedBy:"", done:false, doneBy:"", reported:false, createdAt: Date.now()}), `Added ${name}`);
+  else guarded(()=>addItems([freshItem(data)]), `Added ${name}`);
 });
 
 /* ---------- name ---------- */
 let afterName = null;
 function openName(then){ afterName = then||null; $("fWho").value = state.me; $("scrim").hidden=false; $("nameSheet").hidden=false; setTimeout(()=>$("fWho").focus(),50); }
 $("whoBtn").onclick = () => openName();
-$("nameCancel").onclick = closeSheets;
 $("nameForm").addEventListener("submit", e=>{
   e.preventDefault(); const v = $("fWho").value.trim(); if(!v) return;
   state.me = v; ls.set("msl.me", v); syncUrl(); closeSheets(); render();
   const f = afterName; afterName = null; if (f) setTimeout(f, 60);
 });
 
-$("clearDone").onclick = async () => {
-  const done = state.items.filter(i=>i.done);
-  const ids = done.map(i=>i.id);
-  state.items = state.items.filter(i=>!i.done); render();
-  await guarded(()=>api("deleteItems", {ids}), `Cleared ${done.length} bought item${done.length===1?"":"s"}`);
-};
-
-/* ---------- misc ---------- */
+/* ---------- sheets, banner, toast ---------- */
+function closeSheets(){
+  if (!$("connectSheet").hidden) return;
+  $("scrim").hidden = true; ["sheet","mealSheet","nameSheet"].forEach(id => $(id).hidden = true);
+}
+document.querySelectorAll("[data-close]").forEach(b => b.onclick = closeSheets);
+$("scrim").onclick = closeSheets;
+document.addEventListener("keydown", e=>{ if (e.key === "Escape") closeSheets(); });
 function banner(msg){ const b=$("banner"); b.textContent=msg; b.hidden=!msg; }
-let tt; function toast(msg){ const t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(tt); tt=setTimeout(()=>t.hidden=true, 2600); }
+let tt; function toast(msg){ const t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(tt); tt=setTimeout(()=>t.hidden=true, 3000); }
 
 render();
 initStore();
