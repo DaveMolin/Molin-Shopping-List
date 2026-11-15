@@ -205,6 +205,16 @@ textarea{resize:vertical;min-height:150px;line-height:1.5}
 .linkbtn{border:0;background:transparent;color:var(--green);font-weight:600;font-size:13px;padding:0;justify-self:start;text-decoration:underline}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .22s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
 @media (max-width:380px){.two{grid-template-columns:1fr}}
+/* Compact item rows */
+ul.card > li.item{grid-template-columns:auto 1fr auto;align-items:center}
+ul.card > li.item .row-actions{grid-column:2 / -1;margin-top:0}
+.body.tap{cursor:pointer}
+.side{display:flex;align-items:center;gap:2px}
+.pill.claim{white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis}
+.more{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--muted)}
+li.item.open .more{background:var(--bg);color:var(--ink)}
+.allbar{display:flex;justify-content:flex-end;margin:12px 0 -4px}
+.allbar button{border:0;background:transparent;color:var(--green);font-weight:600;font-size:13px;padding:4px 2px}
 /* Collapsible store sections */
 .ghead{width:100%;display:flex;align-items:center;gap:8px;border:0;background:transparent;padding:6px 0;margin-bottom:6px;font:600 13px var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);text-align:left}
 .ghead .sub{margin-left:auto;font:500 12.5px var(--f-body);text-transform:none;letter-spacing:0;color:var(--ink)}
@@ -418,7 +428,7 @@ try { navigator.storage && navigator.storage.persist && navigator.storage.persis
 
 const state = {
   items: [], saved: [], meals: [], updates: [], archive: null,
-  mode: "loading", tab: "list", view: "list", filter: "all", collapsed: ls.get("msl.collapsed", {}),
+  mode: "loading", tab: "list", view: "list", filter: "all", collapsed: ls.get("msl.collapsed", {}), openItem: null,
   me: urlMe || ls.get("msl.me",""),
   trip: ls.get("msl.trip", null),
   dismissed: ls.get("msl.dismissed", []),
@@ -609,6 +619,11 @@ function renderList(){
   if (state.mode === "loading") list.innerHTML = '<div class="empty"><strong>Loading the list…</strong></div>';
   else {
     if (!items.length) list.append(el("p","list-hint","The list is empty. Tick Blue's food, add a meal from the Meals tab, or open a store below to add something."));
+    const isClosed = id => { const p = state.collapsed[id]; return p === undefined ? !items.some(i=>i.store===id || (id==="other" && !storeById[i.store])) : p; };
+    const anyOpen = STORES.some(s => !isClosed(s.id));
+    const bar = el("div","allbar"), all = el("button", null, anyOpen ? "Close all stores" : "Open all stores"); all.type = "button";
+    all.onclick = () => { state.collapsed = Object.fromEntries(STORES.map(s=>[s.id, anyOpen])); ls.set("msl.collapsed", state.collapsed); state.openItem = null; render(); };
+    bar.append(all); list.append(bar);
     STORES.forEach(s=>{
       const its = items.filter(i=>i.store===s.id || (s.id==="other" && !storeById[i.store]));
       const left = its.filter(i=>!i.done).length;
@@ -636,44 +651,57 @@ function renderList(){
 }
 
 function itemRow(it){
-  const li = el("li", it.done ? "done" : "");
+  const open = state.openItem === it.id;
+  const li = el("li", "item" + (it.done ? " done" : "") + (open ? " open" : ""));
   const ck = el("button","check"); ck.type="button";
   ck.setAttribute("aria-label", it.done ? `Mark ${it.name} as not bought` : `Mark ${it.name} as bought`);
   ck.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green-ink)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
   ck.onclick = () => guarded(()=>patchItem(it.id,{done:!it.done, doneBy: !it.done ? (state.me||"") : ""}));
 
-  const body = el("div","body");
+  const toggle = () => { state.openItem = open ? null : it.id; state.confirm = null; render(); };
+  const body = el("div","body tap"); body.onclick = toggle;
   const nm = el("div","name"); nm.append(el("span","qty", `${it.qty||1}×`), nameNode(it.name || "Item"));
   body.append(nm);
   const bits = [];
   if (it.brand) bits.push(it.brand);
+  if (it.meal) bits.push("for " + it.meal);
   if (it.done && it.doneBy) bits.push(`bought by ${it.doneBy}`);
-  else if (it.addedBy) bits.push(`added by ${it.addedBy}`);
+  else if (open && it.addedBy) bits.push(`added by ${it.addedBy}`);
   if (bits.length) body.append(el("div","sub2", bits.join(" · ")));
-  if (it.meal) body.append(el("span","meal-tag", "for " + it.meal));
 
+  const side = el("div","side");
   if (!it.done) {
-    const acts = el("div","row-actions");
-    const claim = el("button","pill"); claim.type="button";
+    const claim = el("button","pill claim"); claim.type="button";
     const mine = it.claimedBy && state.me && it.claimedBy === state.me;
-    if (!it.claimedBy) claim.textContent = "I'll pick it up";
-    else if (mine) { claim.className += " mine"; claim.textContent = "✓ You're getting it"; }
-    else { claim.className += " theirs"; claim.textContent = `✓ ${it.claimedBy} is getting it`; }
+    if (!it.claimedBy) claim.textContent = "I'll get it";
+    else if (mine) { claim.className += " mine"; claim.textContent = "✓ You"; }
+    else { claim.className += " theirs"; claim.textContent = `✓ ${it.claimedBy}`; }
+    claim.setAttribute("aria-label", !it.claimedBy ? `I'll pick up ${it.name}` : mine ? `You're picking up ${it.name}. Tap to undo.` : `${it.claimedBy} is picking up ${it.name}. Tap to take it over.`);
     claim.onclick = () => {
       if (!state.me) { openName(()=>claim.click()); return; }
       if (mine) guarded(()=>patchItem(it.id,{claimedBy: ""}));
       else guarded(()=>patchItem(it.id,{claimedBy: state.me}), `${state.me} is picking up ${it.name}`);
     };
+    side.append(claim);
+  }
+  const more = el("button","more"); more.type = "button";
+  more.setAttribute("aria-expanded", String(open)); more.setAttribute("aria-label", open ? `Hide options for ${it.name}` : `More options for ${it.name}`);
+  more.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
+  more.onclick = toggle;
+  side.append(more);
+
+  li.append(ck, body, side);
+  if (open) {
+    const acts = el("div","row-actions");
     const ed = el("button","pill","Edit"); ed.type="button"; ed.onclick = () => openSheet(it);
     const key = "del:" + it.id;
     const del = el("button","pill danger", state.confirm === key ? "Tap again to remove" : "Remove"); del.type="button";
     del.onclick = () => {
       if (state.confirm !== key) { askConfirm(key); return; }
-      state.confirm = null; guarded(()=>removeItem(it.id), "Removed");
+      state.confirm = null; state.openItem = null; guarded(()=>removeItem(it.id), "Removed");
     };
-    acts.append(claim, ed, del); body.append(acts);
+    acts.append(ed, del); li.append(acts);
   }
-  li.append(ck, body);
   return li;
 }
 
